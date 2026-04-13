@@ -1,0 +1,179 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Fleet GPU Temperature (Max)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 1, "fillOpacity": 10, "pointSize": 3 },
+          "unit": "celsius"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"thermal\" and r._field == \"maxGpuTemp\")\n  |> aggregateWindow(every: 10s, fn: mean)"
+        }
+      ]
+    },
+    {
+      "title": "Total Fleet Power (kW)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#f0c040" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "unit": "watt"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"chassisWattage\")\n  |> aggregateWindow(every: 10s, fn: sum)"
+        }
+      ]
+    },
+    {
+      "title": "Average PUE",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 1,
+          "max": 2.5,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1.3 },
+              { "color": "red", "value": 1.6 }
+            ]
+          },
+          "unit": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"pue\")\n  |> mean()"
+        }
+      ]
+    },
+    {
+      "title": "Average GPU Utilization (%)",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 30 },
+              { "color": "yellow", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"compute\" and r._field == \"avgGpuUtil\")\n  |> mean()"
+        }
+      ]
+    },
+    {
+      "title": "Coolant Flow Rate (L/min)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#39d2c0" },
+          "custom": { "lineWidth": 1, "fillOpacity": 15 },
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 6 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"thermal\" and r._field == \"flowRate\")\n  |> aggregateWindow(every: 10s, fn: mean)"
+        }
+      ]
+    },
+    {
+      "title": "HBM3e Memory Usage (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"compute\" and r._field == \"avgHbmUsage\")\n  |> aggregateWindow(every: 10s, fn: mean)"
+        }
+      ]
+    },
+    {
+      "title": "NVLink Average Bandwidth (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"compute\" and r._field == \"avgNvlinkBw\")\n  |> aggregateWindow(every: 10s, fn: mean)"
+        }
+      ]
+    },
+    {
+      "title": "PSU Efficiency Distribution",
+      "type": "histogram",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"power\" and r._field == \"avgPsuEfficiency\")\n  |> last()"
+        }
+      ]
+    },
+    {
+      "title": "Inlet vs Outlet Temperature",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "refId": "Inlet",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"thermal\" and r._field == \"inletTemp\")\n  |> aggregateWindow(every: 10s, fn: mean)"
+        },
+        {
+          "refId": "Outlet",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"thermal\" and r._field == \"outletTemp\")\n  |> aggregateWindow(every: 10s, fn: mean)"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["nvidia", "gpu", "datacenter", "nvl72"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "OmniCenter AI — GB200 NVL72 Fleet Monitor",
+  "uid": "omnicenter-fleet-v2",
+  "version": 1
+}

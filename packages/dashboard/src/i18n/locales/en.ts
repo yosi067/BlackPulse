@@ -87,4 +87,53 @@ export default {
   'shortcuts.r': 'R — Reset all servers',
   'shortcuts.b': 'B — Toggle batch mode',
   'shortcuts.questionMark': '? — Show shortcuts help',
+
+  // Server Filter
+  'filter.searchPlaceholder': 'Search servers (ID, name, rack)...',
+  'filter.allStatus': 'All Status',
+  'filter.normal': 'Normal',
+  'filter.warning': 'Warning',
+  'filter.critical': 'Critical',
+  'filter.allRacks': 'All Racks',
+  'filter.rack': 'Rack',
+  'filter.sortId': 'Sort: ID',
+  'filter.sortTemp': 'Sort: Temp ↓',
+  'filter.sortPower': 'Sort: Power ↓',
+  'filter.sortAnomaly': 'Sort: Anomaly ↓',
+
+  // Event Timeline
+  'events.title': 'System Event Log (SEL)',
+  'events.all': 'All',
+  'events.autoScroll': 'Auto-scroll',
+  'events.noEvents': 'No events recorded',
+
+  // GPU ECC Tracker
+  'ecc.title': 'GPU Memory ECC Tracker (DCGM)',
+  'ecc.correctableErrors': 'Correctable',
+  'ecc.uncorrectableErrors': 'Uncorrectable',
+  'ecc.retiredPages': 'Retired Pages',
+  'ecc.xidServers': 'XID Servers',
+  'ecc.sortUE': 'Sort: Uncorrectable',
+  'ecc.sortCE': 'Sort: Correctable',
+  'ecc.sortRetired': 'Sort: Retired Pages',
+  'ecc.sortXid': 'Sort: XID Errors',
+  'ecc.onlyErrors': 'Errors only',
+  'ecc.server': 'Server',
+  'ecc.retired': 'Retired',
+  'ecc.demoNote': 'Simulated DCGM data — connect to real nvidia-smi / DCGM for production',
+
+  // NVSwitch Monitor
+  'nvswitch.title': 'NVSwitch Fabric Monitor',
+  'nvswitch.totalBw': 'Total Throughput',
+  'nvswitch.maxTemp': 'Max Switch Temp',
+  'nvswitch.degradedLinks': 'Degraded Links',
+  'nvswitch.totalPower': 'Switch Power',
+  'nvswitch.detail': 'Detail',
+  'nvswitch.topServers': 'Top Servers by NVSwitch Activity',
+  'nvswitch.backToFleet': 'Back to Fleet View',
+
+  // Webhook & Remediation
+  'webhook.title': 'Webhooks & Auto-Remediation',
+  'webhook.test': 'Test Webhook',
+  'webhook.noHistory': 'No remediation executions yet',
 };

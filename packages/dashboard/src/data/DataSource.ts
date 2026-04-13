@@ -1,14 +1,20 @@
 // Unified data source: switches between WebSocket and Static mode
 
-import type { ServerTelemetry, TelemetryBatch } from '../types';
+import type { ServerTelemetry, TelemetryBatch, SELEvent, EccSummary, NvSwitchSummary } from '../types';
 import { StaticDataSource, isStaticMode } from './StaticDataSource';
 
 export type DataCallback = (batch: TelemetryBatch) => void;
+export type EventCallback = (events: SELEvent[]) => void;
+export type EccCallback = (data: EccSummary[]) => void;
+export type NvSwitchCallback = (data: NvSwitchSummary[]) => void;
 
 export class DataSource {
   private ws: WebSocket | null = null;
   private static staticSource: StaticDataSource | null = null;
   private listeners = new Set<DataCallback>();
+  private eventListeners = new Set<EventCallback>();
+  private eccListeners = new Set<EccCallback>();
+  private nvswitchListeners = new Set<NvSwitchCallback>();
   private useStatic: boolean;
 
   constructor() {
@@ -42,8 +48,21 @@ export class DataSource {
 
       this.ws.onmessage = (event) => {
         try {
-          const batch: TelemetryBatch = JSON.parse(event.data);
-          this.listeners.forEach(fn => fn(batch));
+          const msg = JSON.parse(event.data);
+          switch (msg.type) {
+            case 'telemetry_batch':
+              this.listeners.forEach(fn => fn(msg as TelemetryBatch));
+              break;
+            case 'events':
+              this.eventListeners.forEach(fn => fn(msg.data as SELEvent[]));
+              break;
+            case 'ecc_summary':
+              this.eccListeners.forEach(fn => fn(msg.data as EccSummary[]));
+              break;
+            case 'nvswitch_summary':
+              this.nvswitchListeners.forEach(fn => fn(msg.data as NvSwitchSummary[]));
+              break;
+          }
         } catch {
           // ignore parse errors
         }
@@ -71,6 +90,21 @@ export class DataSource {
   subscribe(fn: DataCallback) {
     this.listeners.add(fn);
     return () => { this.listeners.delete(fn); };
+  }
+
+  subscribeEvents(fn: EventCallback) {
+    this.eventListeners.add(fn);
+    return () => { this.eventListeners.delete(fn); };
+  }
+
+  subscribeEcc(fn: EccCallback) {
+    this.eccListeners.add(fn);
+    return () => { this.eccListeners.delete(fn); };
+  }
+
+  subscribeNvSwitch(fn: NvSwitchCallback) {
+    this.nvswitchListeners.add(fn);
+    return () => { this.nvswitchListeners.delete(fn); };
   }
 
   stop() {

@@ -78,3 +78,139 @@ export function getHealthCSSColor(status: HealthStatus): string {
     case 'normal': return '#76d276';
   }
 }
+
+// ─── GPU ECC / DCGM Types ─────────────────────────────────────────────
+
+export interface GpuEccEntry {
+  gpuId: number;
+  sramCorrectable: number;
+  sramUncorrectable: number;
+  dramCorrectable: number;
+  dramUncorrectable: number;
+  retiredPagesSingle: number;
+  retiredPagesDouble: number;
+  pendingRetirement: number;
+  remapperCorrectable: number;
+  remapperUncorrectable: number;
+  remapperAvailability: boolean;
+  pciReplayCount: number;
+  pciReplayRollover: number;
+  lastXidError: number;
+  lastXidTimestamp: number;
+  thermalViolations: number;
+  powerViolations: number;
+}
+
+export interface EccSummary {
+  serverId: number;
+  summary: {
+    totalSramCE: number;
+    totalSramUE: number;
+    totalDramCE: number;
+    totalDramUE: number;
+    totalRetiredPages: number;
+    gpusWithUncorrectable: number;
+    gpusWithXidErrors: number;
+  };
+}
+
+// ─── NVSwitch Types ───────────────────────────────────────────────────
+
+export interface NvSwitchLinkError {
+  port: number;
+  errors: number;
+  state: number;
+}
+
+export interface NvSwitchInfo {
+  id: number;
+  temperature: number;
+  voltage: number;
+  power: number;
+  activePortCount: number;
+  degradedPortCount: number;
+  downPortCount: number;
+  totalPorts: number;
+  throughputTxGBs: number;
+  throughputRxGBs: number;
+  avgLatencyNs: number;
+  crcErrors: number;
+  eccErrors: number;
+  replayErrors: number;
+  fatalErrors: number;
+  nonFatalErrors: number;
+  recoveryCount: number;
+  topLinkErrors: NvSwitchLinkError[];
+}
+
+export interface NvSwitchSummary {
+  serverId: number;
+  summary: {
+    totalThroughputTB: number;
+    totalFatalErrors: number;
+    degradedLinks: number;
+    maxTemperature: number;
+    totalPower: number;
+  };
+  switches: NvSwitchInfo[];
+}
+
+// ─── SEL Event Types ──────────────────────────────────────────────────
+
+export interface SELEvent {
+  id: string;
+  timestamp: number;
+  serverId: number;
+  type: string;
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  details: Record<string, unknown>;
+  resolved: boolean;
+  resolvedAt: number | null;
+  resolvedBy: string | null;
+}
+
+// ─── Webhook Types ────────────────────────────────────────────────────
+
+export interface WebhookConfig {
+  id: string;
+  name: string;
+  type: 'pagerduty' | 'slack' | 'webhook';
+  url: string;
+  enabled: boolean;
+  rateLimitMs: number;
+}
+
+// ─── Remediation Types ────────────────────────────────────────────────
+
+export interface RemediationStep {
+  action: string;
+  description: string;
+  durationMs: number;
+  status: 'completed' | 'failed' | 'pending';
+  startedAt: number;
+  completedAt: number;
+}
+
+export interface RemediationExecution {
+  id: string;
+  playbookId: string;
+  playbookName: string;
+  eventId: string;
+  serverId: number;
+  startedAt: number;
+  completedAt: number;
+  status: 'success' | 'partial_failure';
+  steps: RemediationStep[];
+  durationMs: number;
+}
+
+export interface Playbook {
+  id: string;
+  name: string;
+  trigger: { eventType: string; minSeverity: string };
+  enabled: boolean;
+  cooldownMs: number;
+  steps: { action: string; description: string; durationMs: number; target?: string }[];
+  successRate: number;
+}

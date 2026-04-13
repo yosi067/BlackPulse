@@ -14,6 +14,8 @@ interface HeaderProps {
   onToggleBatch: () => void;
   onToggleML: () => void;
   showMLPanel: boolean;
+  show3D?: boolean;
+  onToggle3D?: () => void;
 }
 
 export default function GlobalHeader({
@@ -28,6 +30,8 @@ export default function GlobalHeader({
   onToggleBatch,
   onToggleML,
   showMLPanel,
+  show3D,
+  onToggle3D,
 }: HeaderProps) {
   const { t } = useTranslation();
   return (
@@ -75,6 +79,13 @@ export default function GlobalHeader({
 
       <div className={styles.controls}>
         <LanguageSwitcher />
+        <button
+          className={`${styles.toggleBtn} ${show3D ? styles.toggleActive : ''}`}
+          onClick={onToggle3D}
+          title="Toggle 3D Datacenter View"
+        >
+          🏗️
+        </button>
         <button
           className={`${styles.toggleBtn} ${showMLPanel ? styles.toggleActive : ''}`}
           onClick={onToggleML}

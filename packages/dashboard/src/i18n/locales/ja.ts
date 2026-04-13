@@ -87,4 +87,53 @@ export default {
   'shortcuts.r': 'R — 全サーバーリセット',
   'shortcuts.b': 'B — バッチモード切替',
   'shortcuts.questionMark': '? — ショートカットヘルプ表示',
+
+  // Server Filter
+  'filter.searchPlaceholder': 'サーバー検索 (ID、名前、ラック)...',
+  'filter.allStatus': '全ステータス',
+  'filter.normal': '正常',
+  'filter.warning': '警告',
+  'filter.critical': '重大',
+  'filter.allRacks': '全ラック',
+  'filter.rack': 'ラック',
+  'filter.sortId': 'ソート：ID',
+  'filter.sortTemp': 'ソート：温度 ↓',
+  'filter.sortPower': 'ソート：電力 ↓',
+  'filter.sortAnomaly': 'ソート：異常 ↓',
+
+  // Event Timeline
+  'events.title': 'システムイベントログ (SEL)',
+  'events.all': '全て',
+  'events.autoScroll': '自動スクロール',
+  'events.noEvents': 'イベントなし',
+
+  // GPU ECC Tracker
+  'ecc.title': 'GPU メモリ ECC トラッカー (DCGM)',
+  'ecc.correctableErrors': '訂正可能',
+  'ecc.uncorrectableErrors': '訂正不能',
+  'ecc.retiredPages': 'リタイアページ',
+  'ecc.xidServers': 'XID サーバー',
+  'ecc.sortUE': 'ソート：訂正不能',
+  'ecc.sortCE': 'ソート：訂正可能',
+  'ecc.sortRetired': 'ソート：リタイアページ',
+  'ecc.sortXid': 'ソート：XID エラー',
+  'ecc.onlyErrors': 'エラーのみ',
+  'ecc.server': 'サーバー',
+  'ecc.retired': 'リタイア',
+  'ecc.demoNote': 'シミュレートされたDCGMデータ — 本番ではnvidia-smi / DCGMに接続',
+
+  // NVSwitch Monitor
+  'nvswitch.title': 'NVSwitch ファブリック監視',
+  'nvswitch.totalBw': '総スループット',
+  'nvswitch.maxTemp': '最高スイッチ温度',
+  'nvswitch.degradedLinks': '劣化リンク',
+  'nvswitch.totalPower': 'スイッチ電力',
+  'nvswitch.detail': '詳細',
+  'nvswitch.topServers': 'NVSwitch アクティビティ上位サーバー',
+  'nvswitch.backToFleet': 'フリートビューに戻る',
+
+  // Webhook & Remediation
+  'webhook.title': 'Webhook & 自動修復',
+  'webhook.test': 'Webhook テスト',
+  'webhook.noHistory': '修復実行履歴なし',
 };

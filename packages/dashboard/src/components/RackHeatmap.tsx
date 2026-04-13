@@ -45,9 +45,10 @@ interface RackHeatmapProps {
   selectedServer?: number | null;
   batchMode?: boolean;
   batchSelected?: Set<number>;
+  filteredIds?: number[];
 }
 
-export default function RackHeatmap({ data, onSelectServer, selectedServer, batchMode, batchSelected }: RackHeatmapProps) {
+export default function RackHeatmap({ data, onSelectServer, selectedServer, batchMode, batchSelected, filteredIds }: RackHeatmapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const cellsRef = useRef<PIXI.Container[]>([]);
@@ -201,6 +202,8 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
       const maxTemp = data.summaries[i * 3 + 1];
       const anomaly = data.summaries[i * 3 + 2];
 
+      // Dim servers not in filter
+      const isFiltered = filteredIds ? filteredIds.includes(i) : true;
       const cellW = (cellsRef.current[i] as any)._cellW || 80;
       const cellH = (cellsRef.current[i] as any)._cellH || 60;
       const color = tempToColor(anomaly);
@@ -208,9 +211,12 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
       // Background with gradient fill
       const bg = cellBgRef.current[i];
       bg.clear();
-      bg.beginFill(color, 0.15);
+      bg.beginFill(color, isFiltered ? 0.15 : 0.03);
       bg.drawRoundedRect(0, 0, cellW, cellH, 3);
       bg.endFill();
+
+      // Dim non-filtered cells
+      cellsRef.current[i].alpha = isFiltered ? 1 : 0.25;
 
       // Border
       const border = borderRef.current[i];
@@ -295,7 +301,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
         }
       }
     }
-  }, [data, selectedServer, batchMode, batchSelected]);
+  }, [data, selectedServer, batchMode, batchSelected, filteredIds]);
 
   return (
     <div

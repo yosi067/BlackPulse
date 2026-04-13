@@ -1,0 +1,16 @@
+apiVersion: 1
+datasources:
+  - name: InfluxDB-Simulated
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: omnicenter
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMode: GET
+      organization: omnicenter
+      defaultBucket: telemetry
+      version: Flux
+    secureJsonData:
+      token: omnicenter-dev-token

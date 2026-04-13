@@ -1,0 +1,92 @@
+.container { border-top: 1px solid var(--border); }
+.header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer;
+}
+.header:hover { background: var(--bg-card); }
+.icon { font-size: 14px; }
+.title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.statBadge {
+  margin-left: auto; font-size: 9px; padding: 1px 6px; border-radius: 8px;
+  background: rgba(118,210,118,0.15); color: var(--accent-green);
+  font-family: 'JetBrains Mono', monospace;
+}
+.chevron { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+
+.body { padding: 0 12px 12px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.tabBtn {
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 3px;
+  background: transparent; color: var(--text-secondary); font-size: 10px;
+  cursor: pointer;
+}
+.tabBtn:hover { border-color: var(--accent-blue); }
+.activeTab {
+  background: rgba(88,166,255,0.1); border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+
+.item {
+  padding: 8px; border-radius: 4px;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.itemHeader { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.toggle {
+  background: none; border: none; font-size: 12px; cursor: pointer;
+  color: var(--text-muted); padding: 0 4px;
+}
+.toggle.on { color: var(--accent-green); }
+.itemName { font-size: 11px; font-weight: 600; color: var(--text-primary); }
+.typeBadge {
+  margin-left: auto; font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  background: rgba(188,140,255,0.15); color: var(--accent-purple);
+  text-transform: uppercase; font-weight: 600;
+}
+.successRate {
+  margin-left: auto; font-size: 10px; color: var(--accent-green);
+  font-family: 'JetBrains Mono', monospace;
+}
+.itemUrl {
+  font-size: 9px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.triggerInfo {
+  font-size: 9px; color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 3px;
+}
+.steps { display: flex; flex-direction: column; gap: 1px; margin: 4px 0; }
+.step { font-size: 9px; color: var(--text-secondary); padding-left: 8px; }
+.itemMeta { font-size: 9px; color: var(--text-muted); }
+
+.actionBtn {
+  padding: 5px 12px; border: 1px solid var(--accent-blue); border-radius: 3px;
+  background: rgba(88,166,255,0.1); color: var(--accent-blue);
+  font-size: 10px; cursor: pointer; align-self: flex-start;
+}
+.actionBtn:hover { background: rgba(88,166,255,0.2); }
+
+.empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px; }
+
+.historyItem {
+  padding: 6px 8px; border-radius: 4px; border-left: 3px solid;
+  background: var(--bg-card);
+}
+.historyItem.success { border-color: var(--accent-green); }
+.historyItem.failure { border-color: var(--accent-yellow); }
+.historyHeader { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.historyStatus { font-size: 11px; }
+.historyName { font-size: 10px; font-weight: 600; color: var(--text-primary); }
+.historyServer {
+  font-size: 9px; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(139,148,158,0.1); padding: 0 4px; border-radius: 2px;
+}
+.historyTime { margin-left: auto; font-size: 9px; color: var(--text-muted); }
+.historySteps { display: flex; flex-direction: column; gap: 1px; margin: 3px 0; }
+.historyStep { font-size: 9px; color: var(--text-secondary); padding-left: 4px; }
+.stepOk { color: var(--accent-green); }
+.stepFail { color: var(--accent-red); }
+.historyDuration { font-size: 9px; color: var(--text-muted); }

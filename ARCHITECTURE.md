@@ -15,9 +15,19 @@
 - [7. GLSL Shader 特效管線](#7-glsl-shader-特效管線)
 - [8. AI/ML 預測引擎（Demo）](#8-aiml-預測引擎demo)
 - [9. 告警規則引擎運作原理](#9-告警規則引擎運作原理)
-- [10. 串接真實系統所需改動](#10-串接真實系統所需改動)
-- [11. 注意事項與已知限制](#11-注意事項與已知限制)
-- [12. 後續擴充路線圖](#12-後續擴充路線圖)
+- [10. v3 企業級子系統架構](#10-v3-企業級子系統架構)
+  - [10.1 InfluxDB 時序緩衝引擎](#101-influxdb-時序緩衝引擎)
+  - [10.2 GPU ECC 錯誤追蹤（DCGM 風格）](#102-gpu-ecc-錯誤追蹤-dcgm-風格)
+  - [10.3 NVSwitch Fabric 監控](#103-nvswitch-fabric-監控)
+  - [10.4 SEL 事件系統](#104-sel-事件系統)
+  - [10.5 Webhook 通知管理器](#105-webhook-通知管理器)
+  - [10.6 自動修復引擎 (Auto-remediation)](#106-自動修復引擎-auto-remediation)
+  - [10.7 3D 資料中心視圖 (Three.js)](#107-3d-資料中心視圖-threejs)
+  - [10.8 伺服器搜尋與篩選](#108-伺服器搜尋與篩選)
+  - [10.9 Grafana 整合與 Dashboard Provisioning](#109-grafana-整合與-dashboard-provisioning)
+- [11. 串接真實系統所需改動](#11-串接真實系統所需改動)
+- [12. 注意事項與已知限制](#12-注意事項與已知限制)
+- [13. 後續擴充路線圖（v4 及更遠）](#13-後續擴充路線圖v4-及更遠)
 
 ---
 
@@ -52,27 +62,42 @@
 │                                                                             │
 │  ⑤ React 渲染層                                                             │
 │     • GlobalHeader — 聚合指標 (i18n 翻譯)                                   │
-│     • RackHeatmap — 100 cells × Pixi.js + GLSL Shader                     │
+│     • RackHeatmap — 100 cells × Pixi.js + GLSL Shader + 篩選調光           │
+│     • ServerFilter — 即時搜尋 + 狀態/機櫃篩選 + 排序                        │
+│     • DataCenter3D — Three.js 等角投影機房 (Lazy-loaded)                    │
 │     • AIOpsPanel — 規則式告警生成                                            │
 │     • AlertRuleEngine — 自定義規則即時評估                                   │
 │     • MLPredictionEngine — 模擬 ML 推論                                     │
+│     • GPUEccTracker — DCGM 風格 ECC 錯誤追蹤                               │
+│     • NVSwitchMonitor — NVSwitch Fabric 吞吐/鏈路監控                       │
+│     • EventTimeline — SEL 事件時間軸（19 種事件）                            │
+│     • WebhookSettings — Webhook + Playbook + 執行歷史三頁籤                 │
 │     • BatchOperations — 多選 + 批次操作                                     │
 │     • ServerDetail — 火焰圖 + NVLink + 液冷                                 │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 資料流時序
+### 資料流時序（v3 更新）
 
 ```
 t=0ms    BMC Simulator: generateTelemetry(0..99)
-t=1ms    WebSocket: JSON.stringify({ type:'telemetry_batch', data:[100 items] })
-t=2ms    DataSource.onmessage → JSON.parse → 通知 listeners
-t=3ms    useTelemetry callback → worker.postMessage({ type:'telemetry_batch', payload })
-t=4ms    Worker: 展平 7200 temps → processServerBatch → LTTB → anomaly
-t=8ms    Worker: 寫入 SharedArrayBuffer (若可用) → swap → postMessage result
-t=9ms    React setState(ProcessedData) → 觸發渲染
-t=10ms   Pixi.js: 更新 100 cells backgrounds + sparklines + GLSL uniforms
+t=1ms    generateEccData / generateNvSwitchData / generateEvents
+t=2ms    writeTelemetryBatch → InfluxDB buffer
+t=3ms    evaluateAndExecute → remediation engine
+t=4ms    dispatchWebhooks (if critical events)
+t=5ms    WebSocket: 4 messages per tick:
+           ① { type:'telemetry_batch', data:[100 items] }     ~350 KB
+           ② { type:'events', data:[...newEvents] }           ~2 KB
+           ③ { type:'ecc_summary', data:{...fleetEcc} }       ~50 KB
+           ④ { type:'nvswitch_summary', data:{...fleetNvs} }  ~30 KB
+t=7ms    DataSource.onmessage → switch(type) → 通知對應 listeners
+t=8ms    useTelemetry callbacks → update events/ecc/nvswitch state
+t=9ms    worker.postMessage({ type:'telemetry_batch', payload })
+t=10ms   Worker: 展平 7200 temps → processServerBatch → LTTB → anomaly
+t=14ms   Worker: 寫入 SharedArrayBuffer (若可用) → swap → postMessage result
+t=15ms   React setState(ProcessedData) → 觸發渲染
+t=16ms   Pixi.js: 更新 100 cells + sparklines + GLSL uniforms
 t=16ms   下一幀 (60 FPS) — Shader time 動畫持續推進
 ...
 t=1000ms 下一輪 tick (1 秒間隔)
@@ -97,14 +122,17 @@ t=1000ms 下一輪 tick (1 秒間隔)
 | 其他標量 | 500 | inlet/outlet temp, flow rate, wattage, pue × 100 |
 | **每秒總 float values** | **~29,900** | ≈ 120 KB raw float data |
 
-### WebSocket JSON 傳輸量
+### WebSocket JSON 傳輸量（v3 更新）
 
 | 項目 | 估算 |
 |---|---|
 | 單台伺服器 JSON | ~3.5 KB（含 72 顆 GPU 的 4 組陣列 + 標量） |
-| 100 台 JSON batch | ~350 KB / 秒 |
+| telemetry_batch (100 台) | ~350 KB / 秒 |
+| events 訊息 | ~2 KB / 秒（正常時 0-3 筆事件） |
+| ecc_summary 訊息 | ~50 KB / 秒（100 台 × 72 GPU 摘要） |
+| nvswitch_summary 訊息 | ~30 KB / 秒（100 台 × 2 NVSwitch 摘要） |
 | 含 JSON key 名稱開銷 | ~40% overhead（vs binary） |
-| **有效載荷** | **~350 KB/s ≈ 2.8 Mbps** |
+| **v3 總有效載荷** | **~432 KB/s ≈ 3.5 Mbps**（較 v2 增加 ~23%） |
 
 ### Web Worker 處理的數據
 
@@ -147,8 +175,12 @@ t=1000ms 下一輪 tick (1 秒間隔)
 | **液冷數據** | 單一流速值 | 多迴路：CDU 進出水溫、壓力、流量計 |
 | **NVLink 指標** | 隨機生成頻寬% | `nvidia-smi nvlink --status` 真實 Tx/Rx bytes |
 | **PSU 數據** | 6 個效率值 | PMBus 讀數：電壓、電流、功率、效率、風扇 RPM |
-| **Event Log** | 無 | SEL (System Event Log) 完整事件紀錄 |
+| **Event Log** | ✅ 19 種事件類型的 SEL 模擬（Ring buffer 500 筆） | SEL (System Event Log) 完整事件紀錄 |
 | **韌體資訊** | 無 | BMC FW / BIOS / GPU driver 版本查詢 |
+| **GPU ECC** | ✅ DCGM 風格模擬（SRAM/DRAM CE/UE、Retired Pages、XID） | nvidia-smi / DCGM 真實讀取 |
+| **NVSwitch** | ✅ 4th-gen 模擬（2×64 ports、00 GB/s each） | NVSM / nvswitch-audit 真實讀取 |
+| **Webhook** | ✅ PagerDuty/Slack/Generic (Dry-run) | 真實 HTTP POST + 重試機制 |
+| **Auto-remediation** | ✅ 5 個 Ansible-style Playbook 模擬執行 | Ansible / Salt / 自定義 Operator |
 
 ### 數據真實度分析
 
@@ -171,6 +203,10 @@ t=1000ms 下一輪 tick (1 秒間隔)
 3. **無故障狀態機**：真實 BMC 有明確的故障狀態轉移（Normal → Caution → Critical → Shutdown），模擬器只有 Normal 和 Panic 兩態
 4. **無網路拓撲延遲**：真實 Redfish 呼叫有網路延遲 50-500ms，模擬器為本機直連
 5. **無認證與授權**：真實 BMC 需要 session 管理與 RBAC 權限控制
+6. **ECC 計數器為模擬**：真實 DCGM 的 ECC 錯誤類型更多樣（含 Row Remapper 詳細狀態、SRAM 區域定位等）
+7. **NVSwitch 簡化**：真實系統的 NVSwitch 有更複雜的路由拓撲、QoS 策略和多路徑對稱
+8. **Webhook Dry-run**：目前預設為 Dry-run 模式，不會真的發送 HTTP POST。對接真實服務時需設定實際 URL 並關閉 dryRun
+9. **Remediation 模擬執行**：Playbook 的步驟執行是延遲模擬，未真正呼叫 Ansible / BMC 控制 API
 
 ---
 
@@ -496,7 +532,250 @@ interface AlertRule {
 
 ---
 
-## 10. 串接真實系統所需改動
+## 10. v3 企業級子系統架構
+
+本節詳細說明 v3 新增的 9 個子系統的架構設計、數據流與參數設定。
+
+### 10.1 InfluxDB 時序緩衝引擎
+
+**檔案**：`simulator/src/influxdb-buffer.js`
+
+模擬 InfluxDB 2.x 的 In-memory 時序儲存，支援 Line Protocol 格式寫入與 Flux 風格查詢。
+
+```
+每秒 tick:
+  writeTelemetryBatch(servers[100]):
+    → thermal measurement: inletTemp, outletTemp, flowRate (tag: serverId, rack)
+    → power measurement: wattage, pue, psuEfficiency (tag: serverId, rack)
+    → compute measurement: avgGpuUtil, avgHbm3e, avgNvlink (tag: serverId, rack)
+    → 共 300 data points / tick = 18,000 points / min
+    → 1小時滾動保留 → auto-eviction by timestamp
+```
+
+**查詢 API 參數**：
+
+| 參數 | 類型 | 說明 |
+|---|---|---|
+| `measurement` | string | `thermal` / `power` / `compute` |
+| `tags` | object | `{ serverId: "0", rack: "Rack-0" }` |
+| `range` | object | `{ start: "-1h", stop: "now()" }` |
+| `aggregateWindow` | object | `{ every: "5m", fn: "mean" }` — 支援 mean/max/min/last/sum |
+
+**Docker 整合**：docker-compose.yml 配置 InfluxDB 2.7（port 8086），org: `omnicenter`，bucket: `telemetry`。目前模擬器使用 in-memory buffer；切換至真實 InfluxDB 僅需替換 `writeTelemetryBatch` 為 HTTP POST 至 `/api/v2/write`。
+
+---
+
+### 10.2 GPU ECC 錯誤追蹤（DCGM 風格）
+
+**檔案**：`simulator/src/gpu-ecc-generator.js`  
+**前端**：`components/GPUEccTracker.tsx`
+
+模擬 NVIDIA Data Center GPU Manager (DCGM) 的 ECC 錯誤計數器，每台伺服器 72 顆 GPU 各自追蹤：
+
+| 計數器 | 正常速率 | Panic 速率 | 真實參考 |
+|---|---|---|---|
+| SRAM Correctable | ~0.01/GPU/tick | ~0.08/GPU/tick | `dcgmi diag -r 3` |
+| SRAM Uncorrectable | ~0.0005 | ~0.005 | 觸發 XID 94 |
+| DRAM (HBM3e) Correctable | ~0.005 | ~0.04 | HBM3e ECC scrubbing |
+| DRAM Uncorrectable | ~0.00002 | ~0.0002 | 觸發 XID 63 / page retirement |
+| Retired Pages (Single) | 開機隨機 0-2 | — | `nvidia-smi -q -d RETIRED_PAGES` |
+| PCIe Replay Count | 開機隨機 0-4 | — | PCIe link retraining |
+| XID Errors (94/63) | 依 UE 觸發 | — | NVIDIA XID Error Code |
+
+**Fleet 統計摘要**：WebSocket 每秒推送 `ecc_summary`，包含全域 totalSramCE、totalDramUE、gpusWithXidErrors 等。
+
+**前端功能**：
+- Fleet 卡片：Correctable / Uncorrectable / Retired Pages / XID Servers
+- 可排序表格（依 UE/CE/retired/XID），支援「僅顯示異常」篩選
+- 紅色高亮 uncorrectable errors
+
+---
+
+### 10.3 NVSwitch Fabric 監控
+
+**檔案**：`simulator/src/nvswitch-generator.js`  
+**前端**：`components/NVSwitchMonitor.tsx`
+
+模擬 NVSwitch 4th-gen（GB200 NVL72 架構）：每台伺服器 2 顆 NVSwitch，每顆 64 個 NVLink 5.0 ports（100 GB/s 單向）。
+
+| 指標 | 範圍 | 真實參考 |
+|---|---|---|
+| Switch 溫度 | 55-85°C | NVSM thermal sensor |
+| 供電電壓 | ~0.78V ±0.03 | VRM telemetry |
+| Switch 功耗 | 120-180W | Board power sensor |
+| Port 狀態 | active/degraded/down | NVLink link status |
+| Per-port Tx/Rx 頻寬 | 0-100 GB/s | nvlink counters |
+| Link 延遲 | 400-800 ns | Fabric hop latency |
+| CRC/ECC 錯誤 | 低頻隨機 | Link error counters |
+
+**WebSocket 推送**：每秒發送 `nvswitch_summary`，包含 fleet 總吞吐 (TB/s)、最高溫度、degraded links 數。
+
+**前端功能**：
+- Fleet 統計卡片：總吞吐 / 最高溫度 / Degraded Links / 總功耗
+- 每台伺服器 2 NVSwitch 卡片：溫度 / 電壓 / 功耗 / 64-port 狀態條
+- Port 狀態以顏色表示（綠=active、黃=degraded、紅=down）
+- TX/RX 頻寬、延遲、CRC/Fatal 錯誤
+- 點擊展開詳細 port 級資訊
+
+---
+
+### 10.4 SEL 事件系統
+
+**檔案**：`simulator/src/event-generator.js`  
+**前端**：`components/EventTimeline.tsx`
+
+模擬 IPMI System Event Log (SEL) 的事件產生器，支援 19 種事件類型：
+
+```
+Temperature Threshold | Temperature Critical | PSU Status Change | PSU Redundancy
+Fan Failure | ECC Correctable Error | ECC Uncorrectable Error | NVLink State Change
+NVSwitch Error | Power Cycle | BMC Firmware Event | Watchdog Timer
+Chassis Intrusion | Coolant Flow Alert | GPU Thermal Throttle | NVIDIA XID Error
+Memory Training | System Boot | Auto-Remediation
+```
+
+**設計**：
+- 每秒根據遙測數據門檻自動生成事件（如 GPU > 85°C → Temperature Threshold）
+- Ring buffer 500 筆，FIFO 淘汰
+- 每筆事件包含：id、timestamp、severity (critical/warning/info)、type、serverId、message、resolved 狀態
+
+**前端功能**：
+- 時間軸佈局：時間線連接器 + 嚴重度色點 + 類型 emoji 圖示
+- 嚴重度篩選（All / Critical / Warning / Info）
+- 自動捲動切換
+- Resolve 按鈕標記已解決
+
+---
+
+### 10.5 Webhook 通知管理器
+
+**檔案**：`simulator/src/webhook-manager.js`  
+**前端**：`components/WebhookSettings.tsx`（Webhooks 頁籤）
+
+3 種預設通道：
+
+| 通道 | Payload 格式 | 預設狀態 |
+|---|---|---|
+| PagerDuty | Events API v2 (`routing_key` + `event_action: trigger`) | 停用 |
+| Slack | Incoming Webhook (attachments 格式) | 停用 |
+| Generic HTTP | JSON (`{ alert, server, timestamp, severity }`) | 停用 |
+
+**特性**：
+- 每通道獨立啟停、URL 設定、Rate limiting（預設 5分鐘/unique alert）
+- **Dry-run 模式**（預設開啟）：不實際發送 HTTP POST，僅記錄 payload
+- 派發歷史 Ring buffer 200 筆
+- Alert → Webhook 派發時機：每秒 tick 檢查 events 中的 critical 事件
+
+---
+
+### 10.6 自動修復引擎 (Auto-remediation)
+
+**檔案**：`simulator/src/remediation-engine.js`  
+**前端**：`components/WebhookSettings.tsx`（Playbooks 頁籤 + History 頁籤）
+
+5 個 Ansible-style Playbook：
+
+| # | Playbook | 觸發條件 | 成功率 | Cooldown |
+|---|---|---|---|---|
+| 1 | Thermal Throttle Mitigation | GPU > 90°C | 85% | 5 min |
+| 2 | GPU ECC Error Response | ECC UE > 0 | 70% | 10 min |
+| 3 | NVLink Degraded Link Recovery | NVLink degraded detected | 90% | 3 min |
+| 4 | PSU Redundancy Failover | PSU efficiency < 85% | 95% | 15 min |
+| 5 | Coolant Flow Recovery | Flow rate < 5 L/min | 80% | 5 min |
+
+**執行流程**：
+```
+每秒 tick → evaluateAndExecute(telemetry, eccData, nvswitchData)
+  → 逐一檢查 playbook 觸發條件
+  → 符合條件 → 檢查 cooldown
+  → 建立 execution context → 模擬逐步驟執行（setTimeout 延遲）
+  → 每步驟成功/失敗判定 → 更新 execution 記錄
+  → 完成 → 寫入 event log（Auto-Remediation 事件）
+  → 統計成功率
+```
+
+**前端功能**：
+- Playbooks 頁籤：啟停切換、觸發條件描述、步驟列表、Cooldown/Duration 資訊、成功率
+- History 頁籤：執行歷史列表，含狀態圖示、步驟完成指標、耗時
+
+---
+
+### 10.7 3D 資料中心視圖 (Three.js)
+
+**前端**：`components/DataCenter3D.tsx`（React.lazy 延遲載入）
+
+使用 Three.js 建構等角投影的 3D 機房模型：
+
+| 元素 | 規格 | 說明 |
+|---|---|---|
+| 機櫃 | 10 個（2×5 網格） | 半透明線框 BoxGeometry |
+| 伺服器 | 100 個（每櫃 10 台） | 小型 Box，顏色依 anomaly 映射 |
+| LED 指示燈 | 100 個 | 紅(critical)/黃(warning)/綠(normal) 球體 |
+| CDU 冷卻塔 | 1 個 | 圓柱體 + 冷卻管路線條 |
+| 地板格線 | 自動生成 | GridHelper |
+| 環境 | Fog + 環境光 + 方向光 | ACES filmic tone mapping |
+
+**互動**：
+- OrbitControls：拖曳旋轉、滾輪縮放、右鍵平移
+- Raycaster 點擊：選取伺服器 → 更新主面板
+- Mousemove：Tooltip 顯示伺服器 ID 與溫度
+- Camera 初始位置：(18, 14, 18) 俯視
+
+**效能考量**：
+- Lazy-loaded（`React.lazy`），不開啟時零開銷
+- 100 個 Mesh 在現代 GPU 上完全無壓力
+- Canvas 高度固定 320px，限制 pixel fill rate
+- 使用 `requestAnimationFrame` 獨立渲染迴圈
+
+---
+
+### 10.8 伺服器搜尋與篩選
+
+**前端**：`components/ServerFilter.tsx` + `RackHeatmap.tsx`（filteredIds 支援）
+
+| 篩選維度 | 選項 |
+|---|---|
+| 文字搜尋 | 依 Server ID 即時比對 |
+| 狀態篩選 | All / Normal / Warning / Critical |
+| 機櫃篩選 | Rack 0 ~ Rack 9 |
+| 排序 | ID / 溫度 / 功耗 / 異常分數 |
+
+篩選結果傳入 `RackHeatmap`，未匹配的伺服器 alpha 降至 0.25 + 背景透明度降低，產生「聚焦」效果。
+
+---
+
+### 10.9 Grafana 整合與 Dashboard Provisioning
+
+**基礎設施**：`docker-compose.yml` + `grafana/` 目錄
+
+```yaml
+# docker-compose.yml 中新增的服務
+influxdb:     # InfluxDB 2.7, port 8086
+grafana:      # Grafana 10.4.0, port 3000 (admin/omnicenter)
+```
+
+**自動 Provisioning**：
+- `grafana/provisioning/datasources/influxdb.yml` → InfluxDB Flux 數據源
+- `grafana/provisioning/dashboards/dashboard.yml` → Auto-load dashboard JSON
+- `grafana/dashboards/omnicenter.json` → 9 面板 Dashboard
+
+**Dashboard 面板**：
+
+| 面板 | 類型 | Flux 查詢 |
+|---|---|---|
+| Fleet GPU Temperature | timeseries | `thermal` → `inletTemp`, `outletTemp` |
+| Total Fleet Power | timeseries | `power` → `wattage` |
+| Average PUE | gauge | `power` → `pue` → mean |
+| GPU Utilization | gauge | `compute` → `avgGpuUtil` → mean |
+| Coolant Flow Rate | timeseries | `thermal` → `flowRate` |
+| HBM3e Memory Usage | timeseries | `compute` → `avgHbm3e` |
+| NVLink Bandwidth | timeseries | `compute` → `avgNvlink` |
+| PSU Efficiency | histogram | `power` → `psuEfficiency` |
+| Inlet vs Outlet Temp | timeseries | `thermal` → 雙 Y 軸 |
+
+---
+
+## 11. 串接真實系統所需改動
 
 ### 階段 1：替換數據源（最小改動）
 
@@ -555,7 +834,7 @@ Aggregator 負責：
 
 ---
 
-## 11. 注意事項與已知限制
+## 12. 注意事項與已知限制
 
 ### 瀏覽器相容性
 
@@ -566,6 +845,7 @@ Aggregator 負責：
 | GLSL Fragment Shader | WebGL 1.0+ | 不渲染 Shader，視覺效果退化但不影響功能 |
 | Web Worker ES Module | Chrome 80+, Firefox 114+ | ——（必要功能）|
 | CSS `backdrop-filter` | Chrome 76+, Firefox 103+ | 無模糊效果 |
+| Three.js WebGL | Chrome 56+, Firefox 51+ | 隱藏 3D 視圖按鈕（需 WebGL 2.0）|
 
 ### SharedArrayBuffer 注意事項
 
@@ -594,35 +874,76 @@ Aggregator 負責：
 - 語言偏好存於 `localStorage('omnicenter-lang')`
 - 動態內容（如告警訊息）目前仍為英文固定值，需進一步國際化
 
+### v3 子系統注意事項
+
+1. **Webhook Dry-run 模式**：預設所有 Webhook 為 dry-run + disabled，不會發送真實 HTTP 請求。整合真實 PagerDuty/Slack 時需手動設定 URL 並關閉 dryRun
+2. **Remediation 模擬執行**：Playbook 步驟以 setTimeout 延遲模擬執行，未實際呼叫 Ansible API 或 BMC 控制端點
+3. **InfluxDB Buffer 為 In-memory**：重啟後資料清空。切換至 Docker InfluxDB 需替換寫入函式（Line Protocol 格式已相容）
+4. **ECC 計數器簡化**：真實 DCGM 的 ECC 錯誤有更細粒度的區域定位（bank/row address），模擬器僅追蹤全域計數
+5. **NVSwitch Port 數量**：真實 GB200 NVL72 的 NVSwitch 有更複雜的多層拓撲，模擬為扁平 64-port 結構
+6. **Three.js 記憶體**：3D 視圖會佔用 ~30-50 MB GPU 記憶體（100 meshes + materials + textures），關閉時 Lazy-load 保證零開銷
+7. **WebSocket 頻寬增加**：v3 每秒推送 4 種訊息（telemetry + events + ecc + nvswitch），總頻寬約 ~450 KB/s（較 v2 增加約 30%）
+8. **Event Ring Buffer 上限**：500 筆事件滿後 FIFO 淘汰，不支援歷史查詢。需要長期儲存應串接 InfluxDB 或 Elasticsearch
+9. **Grafana 需要 Docker**：Grafana 面板僅在 `docker-compose up` 時可用，純 `npm run dev` 不含 Grafana
+
+### 延續擴充建議
+
+以下為各模組可直接延續擴充的方向，不需架構重構：
+
+| 模組 | 可擴充方向 | 複雜度 |
+|---|---|---|
+| **GPU ECC Tracker** | 新增 ECC 趨勢圖（時序）、退頁預測（何時達到閾值）、DCGM Job Stats 模擬 | 中 |
+| **NVSwitch Monitor** | 新增拓撲圖視覺化（NVSwitch ↔ GPU 連線圖）、traffic 熱力圖、QoS 面板 | 中 |
+| **Event Timeline** | 新增事件關聯分析（同時段多事件聚合）、匯出 CSV/JSON、事件統計面板 | 低 |
+| **Webhook** | 新增 Teams/Discord 通道、自定義 payload template、Retry with backoff | 低 |
+| **Remediation** | 新增自定義 Playbook 建立 UI、steps editor、execution 甘特圖 | 中 |
+| **3D View** | 新增 LOD（Level of Detail）、機櫃內部展開、散熱氣流粒子動畫 | 高 |
+| **InfluxDB** | 串接真實 InfluxDB HTTP API、Continuous Query 自動降採樣、Retention Policy | 低 |
+| **Grafana** | 新增 Alerting rules、Annotation API、嵌入式 iframe panel | 低 |
+| **ServerFilter** | 新增自定義篩選欄位、saved filter presets、URL query string 同步 | 低 |
+
 ---
 
-## 12. 後續擴充路線圖
+## 13. 後續擴充路線圖（v4 及更遠）
 
 以下參考真實 AI 伺服器監控軟體的功能需求（NVIDIA Base Command Manager、Supermicro SuperCloud Composer、Dell OpenManage、HPE iLO Amplifier），列出可延續擴充的方向：
 
-### 🟢 短期（1-2 週）— 基於現有架構直接擴充
+### ✅ 已完成（v3，原短期/中期/長期規劃）
+
+| 功能 | 原規劃時程 | 完成狀態 |
+|---|---|---|
+| InfluxDB 時序儲存 | 短期 | ✅ In-memory buffer + Docker 配置 |
+| Grafana 整合 | 短期 | ✅ 9 面板 Flux Dashboard + Provisioning |
+| 伺服器搜尋/篩選 | 短期 | ✅ 搜尋 + 多維篩選 + 排序 |
+| 3D 機房視圖 | 中期 | ✅ Three.js + OrbitControls + Raycaster |
+| 事件時間軸 (SEL) | 中期 | ✅ 19 種事件 + 嚴重度篩選 + Resolve |
+| Webhook / PagerDuty | 中期 | ✅ 3 通道 + Rate limiting + Dry-run |
+| Auto-remediation | 長期 | ✅ 5 Ansible-style Playbook |
+| GPU ECC 追蹤 (DCGM) | 長期 | ✅ 72 GPU × 17 計數器 + Fleet 統計 |
+| NVSwitch 監控 | 長期 | ✅ 2×64 port + Fabric 吞吐 + 鏈路健康 |
+
+### 🟢 短期（1-2 週）— 可快速實現
 
 | 功能 | 改動範圍 | 複雜度 |
 |---|---|---|
-| **InfluxDB 時序儲存** | 新增 Aggregator → InfluxDB write API | 中 |
-| **Grafana 整合** | 設定 InfluxDB 數據源 + 匯入 Dashboard JSON | 低 |
-| **OAuth2 / SSO** | 新增 React AuthContext + 後端 middleware | 中 |
+| **OAuth2 / SSO 認證** | 新增 React AuthContext + 後端 JWT middleware | 中 |
 | **i18n 新增語系** | 新增 `locales/ko.ts` 等 + 更新 LANGUAGES 陣列 | 低 |
-| **告警 E-mail 通知** | AlertRuleEngine 觸發時 → fetch `/api/notify` | 低 |
-| **伺服器搜尋/篩選** | 在 Heatmap 上方加 filter input | 低 |
-| **儀表板佈局記憶** | 將面板開關狀態存入 localStorage | 低 |
+| **儀表板佈局記憶** | 將面板開關/位置狀態存入 localStorage | 低 |
+| **Protocol Buffers** | 替換 WebSocket JSON 為 Protobuf（減少 ~60% 傳輸量）| 中 |
+| **Dark/Light 主題切換** | CSS 變數覆蓋 + context toggle | 低 |
+| **告警 E-mail 通知** | AlertRuleEngine 觸發時 → nodemailer / SendGrid | 低 |
 
-### 🟡 中期（1-2 月）— 需新增子系統
+### 🟡 中期（1-2 月）— 需要新增子系統
 
 | 功能 | 改動範圍 | 說明 |
 |---|---|---|
-| **真實 BMC Redfish 對接** | 新增 Aggregator Service + RedfishAdapter | 見 [§10](#10-串接真實系統所需改動) |
-| **3D 機房視圖** | 新增 Three.js / Babylon.js 元件 | 等角投影機房模型，點擊下鑽至機櫃 |
-| **事件時間軸** | 新增 EventLog 元件 | SEL (System Event Log) 時間軸瀏覽 |
-| **Webhook / PagerDuty** | 後端告警通知管道 | AlertRuleEngine triggered → POST webhook |
-| **Protocol Buffers** | 替換 WebSocket JSON 為 Protobuf | 減少 ~60% 傳輸量 |
-| **匯出報表** | PDF / CSV 匯出元件 | PUE 月報、碳排估算、SLA 報告 |
+| **真實 BMC Redfish 對接** | 新增 Aggregator Service + RedfishAdapter | 見 [§11](#11-串接真實系統所需改動) |
+| **PDF / CSV 匯出報表** | 新增匯出元件 | PUE 月報、碳排估算、SLA 報告、ECC 歷史 |
 | **Redfish 寫入操作** | 新增控制 API | 遠端設定風扇轉速、功率上限、重開機 |
+| **串接真實 InfluxDB** | 替換 buffer → HTTP write API | Line Protocol 已相容，低改動 |
+| **Grafana Alerting** | 設定 Grafana Alert Rules | 基於 InfluxDB 查詢的告警 |
+| **RBAC 權限控制** | Admin / Operator / Viewer 角色分離 | 控制寫入操作（Panic/Reset/Batch）|
+| **Teams / Discord 通知** | 擴充 webhook-manager | 新增 payload formatter |
 
 ### 🔴 長期（3-6 月）— 架構級擴展
 
@@ -635,9 +956,7 @@ Aggregator 負責：
 | **IPMI raw command 支援** | 底層 BMC 協定層 | ipmitool / OpenIPMI |
 | **OpenTelemetry 整合** | 新增 Collector + Jaeger + Prometheus | 雲原生可觀測性 |
 | **邊緣推論** | BMC/DPU 端部署 ONNX Runtime | NVIDIA DPU BlueField |
-| **Auto-remediation** | 告警 → 自動化修復 playbook（Ansible） | Supermicro SSM |
-| **GPU 記憶體錯誤追蹤** | ECC / Uncorrectaable error 監控 | NVIDIA DCGM |
-| **NVSwitch 監控** | NVSwitch 獨立晶片層級指標 | 真實 NVL72 有 2 顆 NVSwitch |
+| **WebGPU 渲染升級** | 替代 WebGL，支援 compute shader | 萬台規模 instance rendering |
 
 ### 效能擴展路線
 
@@ -645,9 +964,11 @@ Aggregator 負責：
 |---|---|---|---|
 | 伺服器規模 | 100 台 | 10,000 台 | WebGPU + 虛擬捲動 + 分頁載入 |
 | 更新頻率 | 1 Hz | 10 Hz | Protobuf + 差量更新 + QUIC |
-| 歷史查詢 | 無 | 90 天 | InfluxDB + 自動降採樣 + 分層儲存 |
+| 歷史查詢 | 1 小時 (buffer) | 90 天 | InfluxDB 持久化 + 自動降採樣 + 分層儲存 |
 | 並行使用者 | 1 | 100+ | WebSocket pub/sub + Redis | 
 | Wasm 加速 | 3× | 10× | SIMD 指令 + bulk memory ops |
+| WebSocket 頻寬 | ~450 KB/s (4 msg types) | ~150 KB/s | Protobuf + delta encoding |
+| 3D 渲染 | 100 meshes | 10,000 meshes | WebGPU instanced rendering + LOD |
 
 ---
 
@@ -674,6 +995,62 @@ interface ServerTelemetry {
     hbm3eMemoryUsage: number[];  // 72 values, %
     nvlinkBandwidth: number[];   // 72 values, %
   };
+}
+
+// v3 新增型別
+interface GpuEccEntry {
+  gpuId: number;
+  sramCorrectable: number;       // SRAM CE count
+  sramUncorrectable: number;     // SRAM UE count (triggers XID 94)
+  dramCorrectable: number;       // HBM3e DRAM CE count
+  dramUncorrectable: number;     // HBM3e DRAM UE count (triggers XID 63)
+  retiredPagesSingle: number;    // Single-bit retired pages
+  retiredPagesDouble: number;    // Double-bit retired pages
+  pendingRetirement: number;     // Pages pending retirement
+  remapperCorrectable: number;   // Row remapper correctable
+  remapperUncorrectable: number; // Row remapper uncorrectable
+  pciReplayCount: number;        // PCIe replay counter
+  lastXidError: number;          // Last XID error code (0=none, 94, 63)
+  thermalViolations: number;
+  powerViolations: number;
+}
+
+interface NvSwitchInfo {
+  switchId: number;
+  temperature: number;           // °C (55-85)
+  voltage: number;               // V (~0.78)
+  power: number;                 // W (120-180)
+  ports: Array<{
+    portId: number;
+    state: 'active' | 'degraded' | 'down';
+    txBandwidth: number;         // GB/s (0-100)
+    rxBandwidth: number;         // GB/s (0-100)
+    latency: number;             // ns (400-800)
+    crcErrors: number;
+    eccErrors: number;
+    fatalErrors: number;
+  }>;
+}
+
+interface SELEvent {
+  id: string;
+  timestamp: number;
+  severity: 'critical' | 'warning' | 'info';
+  type: string;                  // 19 event types
+  serverId: number;
+  message: string;
+  resolved: boolean;
+}
+
+interface Playbook {
+  id: string;
+  name: string;
+  enabled: boolean;
+  triggerCondition: string;
+  steps: RemediationStep[];
+  cooldownMs: number;
+  estimatedDurationMs: number;
+  successRate: number;
 }
 
 // SharedArrayBuffer 佈局（shared-buffer.ts）

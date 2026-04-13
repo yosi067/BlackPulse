@@ -87,4 +87,53 @@ export default {
   'shortcuts.r': 'R — 重置所有伺服器',
   'shortcuts.b': 'B — 切換批次模式',
   'shortcuts.questionMark': '? — 顯示快捷鍵說明',
+
+  // Server Filter
+  'filter.searchPlaceholder': '搜尋伺服器 (ID、名稱、機櫃)...',
+  'filter.allStatus': '所有狀態',
+  'filter.normal': '正常',
+  'filter.warning': '警告',
+  'filter.critical': '嚴重',
+  'filter.allRacks': '所有機櫃',
+  'filter.rack': '機櫃',
+  'filter.sortId': '排序：ID',
+  'filter.sortTemp': '排序：溫度 ↓',
+  'filter.sortPower': '排序：功耗 ↓',
+  'filter.sortAnomaly': '排序：異常 ↓',
+
+  // Event Timeline
+  'events.title': '系統事件日誌 (SEL)',
+  'events.all': '全部',
+  'events.autoScroll': '自動捲動',
+  'events.noEvents': '尚無事件紀錄',
+
+  // GPU ECC Tracker
+  'ecc.title': 'GPU 記憶體 ECC 追蹤 (DCGM)',
+  'ecc.correctableErrors': '可修正錯誤',
+  'ecc.uncorrectableErrors': '不可修正錯誤',
+  'ecc.retiredPages': '已退役頁面',
+  'ecc.xidServers': 'XID 錯誤伺服器',
+  'ecc.sortUE': '排序：不可修正',
+  'ecc.sortCE': '排序：可修正',
+  'ecc.sortRetired': '排序：已退役頁面',
+  'ecc.sortXid': '排序：XID 錯誤',
+  'ecc.onlyErrors': '僅顯示異常',
+  'ecc.server': '伺服器',
+  'ecc.retired': '退役',
+  'ecc.demoNote': '模擬 DCGM 資料 — 正式環境請連接真實 nvidia-smi / DCGM',
+
+  // NVSwitch Monitor
+  'nvswitch.title': 'NVSwitch 互連結構監控',
+  'nvswitch.totalBw': '總吞吐量',
+  'nvswitch.maxTemp': '最高交換器溫度',
+  'nvswitch.degradedLinks': '降級鏈路',
+  'nvswitch.totalPower': '交換器功耗',
+  'nvswitch.detail': '詳情',
+  'nvswitch.topServers': 'NVSwitch 活動最高伺服器',
+  'nvswitch.backToFleet': '返回叢集檢視',
+
+  // Webhook & Remediation
+  'webhook.title': 'Webhooks 與自動修復',
+  'webhook.test': '測試 Webhook',
+  'webhook.noHistory': '尚無修復執行紀錄',
 };

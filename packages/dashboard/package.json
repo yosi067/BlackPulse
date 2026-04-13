@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "@pixi/react": "^7.1.2",
+    "@types/three": "^0.183.1",
     "fastify": "5.8.4",
     "i18next": "^26.0.4",
     "pixi.js": "^7.4.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-i18next": "^17.0.2"
+    "react-i18next": "^17.0.2",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",

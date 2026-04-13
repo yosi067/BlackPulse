@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getDataSource } from '../data/DataSource';
-import type { ServerTelemetry, TelemetryBatch } from '../types';
+import type { ServerTelemetry, TelemetryBatch, SELEvent, EccSummary, NvSwitchSummary } from '../types';
 import { createSharedBuffers, type SharedBuffers } from '../workers/shared-buffer';
 
 export interface ProcessedData {
@@ -21,6 +21,9 @@ export function useTelemetry() {
   const sharedRef = useRef<SharedBuffers | null>(null);
   const [data, setData] = useState<ProcessedData | null>(null);
   const [connected, setConnected] = useState(false);
+  const [events, setEvents] = useState<SELEvent[]>([]);
+  const [eccData, setEccData] = useState<EccSummary[]>([]);
+  const [nvswitchData, setNvSwitchData] = useState<NvSwitchSummary[]>([]);
 
   useEffect(() => {
     // Create Web Worker
@@ -59,10 +62,24 @@ export function useTelemetry() {
       setConnected(true);
       worker.postMessage({ type: 'telemetry_batch', payload: batch.data });
     });
+
+    const unsubEvents = ds.subscribeEvents((newEvents: SELEvent[]) => {
+      setEvents(prev => [...newEvents, ...prev].slice(0, 200));
+    });
+    const unsubEcc = ds.subscribeEcc((data: EccSummary[]) => {
+      setEccData(data);
+    });
+    const unsubNvSwitch = ds.subscribeNvSwitch((data: NvSwitchSummary[]) => {
+      setNvSwitchData(data);
+    });
+
     ds.start();
 
     return () => {
       unsub();
+      unsubEvents();
+      unsubEcc();
+      unsubNvSwitch();
       ds.stop();
       worker.terminate();
     };
@@ -76,5 +93,5 @@ export function useTelemetry() {
     return getDataSource().reset();
   }, []);
 
-  return { data, connected, triggerPanic, resetPanic };
+  return { data, connected, triggerPanic, resetPanic, events, eccData, nvswitchData };
 }

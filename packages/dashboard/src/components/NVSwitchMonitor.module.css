@@ -1,0 +1,105 @@
+.container { border-top: 1px solid var(--border); }
+.header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer;
+}
+.header:hover { background: var(--bg-card); }
+.icon { font-size: 14px; }
+.title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.errorBadge {
+  margin-left: auto; font-size: 9px; padding: 1px 6px; border-radius: 8px;
+  background: rgba(248,81,73,0.2); color: var(--accent-red);
+  font-family: 'JetBrains Mono', monospace;
+}
+.chevron { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+
+.body { padding: 0 12px 12px; }
+
+.fleetStats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  margin-bottom: 8px;
+}
+.stat {
+  padding: 6px; border-radius: 4px; text-align: center;
+  background: var(--bg-card); border: 1px solid var(--border);
+}
+.stat.warn { border-color: var(--accent-yellow); }
+.statValue {
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+.statUnit { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
+.statLabel {
+  display: block; font-size: 8px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;
+}
+
+.serverDetail { margin-top: 4px; }
+.detailTitle {
+  font-size: 11px; font-weight: 600; color: var(--accent-cyan);
+  margin-bottom: 6px; font-family: 'JetBrains Mono', monospace;
+}
+
+.switchCard {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 8px; margin-bottom: 6px;
+}
+.switchHeader {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.switchName {
+  font-size: 11px; font-weight: 600; color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+.switchTemp { font-size: 10px; color: var(--accent-yellow); margin-left: auto; }
+.switchPower { font-size: 10px; color: var(--text-muted); }
+
+.portBar {
+  display: flex; gap: 1px; margin: 4px 0; flex-wrap: wrap;
+}
+.port {
+  width: 5px; height: 5px; border-radius: 1px;
+}
+.portActive { background: var(--accent-green); }
+.portDegraded { background: var(--accent-yellow); }
+.portDown { background: var(--accent-red); }
+
+.switchStats {
+  display: flex; gap: 8px; font-size: 9px; color: var(--text-secondary);
+  font-family: 'JetBrains Mono', monospace; flex-wrap: wrap;
+}
+.linkErrors {
+  display: flex; gap: 4px; margin-top: 3px; flex-wrap: wrap;
+}
+.linkError {
+  font-size: 8px; padding: 1px 5px; border-radius: 2px;
+  background: rgba(248,81,73,0.1); color: var(--accent-red);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.topServers { margin-top: 4px; }
+.tableTitle {
+  font-size: 10px; color: var(--text-muted); margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.serverRow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px; cursor: pointer; border-radius: 3px;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  transition: background 0.1s;
+}
+.serverRow:hover { background: var(--bg-card-hover); }
+.serverName { color: var(--text-primary); width: 48px; }
+.bw { color: var(--accent-cyan); flex: 1; }
+.temp { color: var(--text-secondary); width: 36px; text-align: right; }
+.links { color: var(--text-secondary); width: 44px; text-align: right; }
+.fatal { color: var(--text-secondary); width: 48px; text-align: right; }
+.valDanger { color: var(--accent-red) !important; font-weight: 700; }
+.valWarn { color: var(--accent-yellow) !important; }
+
+.backBtn {
+  margin-top: 6px; background: none; border: 1px solid var(--border);
+  color: var(--text-secondary); padding: 4px 10px; border-radius: 3px;
+  font-size: 10px; cursor: pointer;
+}
+.backBtn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
