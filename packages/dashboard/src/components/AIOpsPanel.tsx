@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ServerTelemetry, AIOpsAlert } from '../types';
 import styles from './AIOpsPanel.module.css';
 
@@ -86,6 +87,7 @@ function generateAlerts(batch: ServerTelemetry[]): AIOpsAlert[] {
 }
 
 export default function AIOpsPanel({ rawBatch }: AIOpsProps) {
+  const { t } = useTranslation();
   const alerts = useMemo(() => {
     if (!rawBatch) return [];
     return generateAlerts(rawBatch);
@@ -96,13 +98,13 @@ export default function AIOpsPanel({ rawBatch }: AIOpsProps) {
       <div className={styles.header}>
         <div className={styles.headerIcon}>🧠</div>
         <div>
-          <div className={styles.headerTitle}>AIOps Predictions</div>
-          <div className={styles.headerSub}>{alerts.length} active alerts</div>
+          <div className={styles.headerTitle}>{t('aiops.title')}</div>
+          <div className={styles.headerSub}>{t('aiops.activeAlerts', { count: alerts.length })}</div>
         </div>
       </div>
       <div className={styles.list}>
         {alerts.length === 0 && (
-          <div className={styles.empty}>All systems nominal</div>
+          <div className={styles.empty}>{t('aiops.nominal')}</div>
         )}
         {alerts.map((alert) => (
           <div

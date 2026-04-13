@@ -1,0 +1,90 @@
+export default {
+  // Header
+  'header.title': 'OmniCenter AI',
+  'header.subtitle': 'Blackwell NVL72 叢集監控平台',
+  'header.machines': '機器數',
+  'header.avgPue': '平均 PUE',
+  'header.totalPower': '總功耗',
+  'header.alerts': '告警',
+  'header.panic': '⚡ 緊急',
+  'header.reset': '↻ 重置',
+
+  // Rack heatmap
+  'rack.title': '機櫃熱圖',
+  'rack.subtitle': '10×10 伺服器矩陣 · 即時溫度監控',
+  'rack.normal': '正常',
+  'rack.warning': '警告',
+  'rack.critical': '嚴重',
+
+  // Server detail
+  'detail.maxTemp': '最高溫度',
+  'detail.avgTemp': '平均溫度',
+  'detail.gpuUtil': 'GPU 使用率',
+  'detail.power': '功耗',
+  'detail.pue': 'PUE',
+  'detail.flowRate': '冷卻流速',
+  'detail.rack': '機櫃 {{rack}} · 位置 {{pos}}',
+  'detail.gpuFlame': 'GPU 溫度火焰圖 — 72 核心',
+  'detail.nvlink': 'NVLink 互連拓撲',
+  'detail.liquidCooling': '液冷循環流量',
+
+  // AIOps
+  'aiops.title': 'AIOps 預測分析',
+  'aiops.activeAlerts': '{{count}} 個活躍告警',
+  'aiops.nominal': '所有系統正常運行',
+
+  // Batch Operations
+  'batch.title': '批次操作',
+  'batch.selectedCount': '已選取 {{count}} 台伺服器',
+  'batch.selectAll': '全選',
+  'batch.deselectAll': '取消全選',
+  'batch.reboot': '重新啟動',
+  'batch.firmwareUpdate': '韌體更新',
+  'batch.coolingBoost': '散熱增強',
+  'batch.powerCap': '功耗上限',
+  'batch.confirm': '確定對 {{count}} 台伺服器執行「{{action}}」？',
+  'batch.executing': '執行中...',
+  'batch.success': '已完成 {{count}} 台伺服器的操作',
+
+  // Alert Rule Engine
+  'alertEngine.title': '告警規則',
+  'alertEngine.addRule': '+ 新增規則',
+  'alertEngine.metric': '指標',
+  'alertEngine.operator': '運算符',
+  'alertEngine.threshold': '閾值',
+  'alertEngine.duration': '持續時間',
+  'alertEngine.enabled': '已啟用',
+  'alertEngine.active': '運行中',
+  'alertEngine.triggered': '已觸發',
+  'alertEngine.temp': 'GPU 溫度',
+  'alertEngine.util': 'GPU 使用率',
+  'alertEngine.power': '功耗',
+  'alertEngine.flow': '冷卻流量',
+  'alertEngine.seconds': '{{val}} 秒',
+
+  // AI/ML Prediction Engine
+  'mlEngine.title': 'AI/ML 預測引擎',
+  'mlEngine.subtitle': '預測性維護 · 異常檢測 · 容量規劃',
+  'mlEngine.prediction': '故障預測',
+  'mlEngine.anomaly': '異常分數',
+  'mlEngine.capacity': '容量預測',
+  'mlEngine.health': '叢集健康指數',
+  'mlEngine.trend': '趨勢分析',
+  'mlEngine.confidence': '信心度',
+  'mlEngine.nextFailure': '下次預測故障',
+  'mlEngine.hours': '{{val}} 小時',
+  'mlEngine.demoNote': '⚠ 展示模式 — 模擬 ML 推論',
+  'mlEngine.thermalForecast': '溫度預測（未來 24 小時）',
+  'mlEngine.failureProbability': '組件故障概率',
+  'mlEngine.capacityPlanning': '容量規劃',
+
+  // Keyboard shortcuts
+  'shortcuts.title': '鍵盤快捷鍵',
+  'shortcuts.arrows': '方向鍵 — 在機櫃格子間導航',
+  'shortcuts.enter': 'Enter — 開啟伺服器詳情',
+  'shortcuts.escape': 'Escape — 關閉面板',
+  'shortcuts.p': 'P — 觸發緊急模式',
+  'shortcuts.r': 'R — 重置所有伺服器',
+  'shortcuts.b': 'B — 切換批次模式',
+  'shortcuts.questionMark': '? — 顯示快捷鍵說明',
+};

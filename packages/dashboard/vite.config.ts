@@ -7,6 +7,10 @@ export default defineConfig({
   plugins: [react(), wasm(), topLevelAwait()],
   server: {
     port: 5173,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
     proxy: {
       '/ws': {
         target: 'ws://localhost:3001',

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
 import type { ProcessedData } from '../hooks/useTelemetry';
 import type { ServerTelemetry } from '../types';
+import { createHeatCellFilter, hexToRgb } from '../shaders/gpu-effects';
 
 const GRID_COLS = 10;
 const GRID_ROWS = 10;
@@ -42,9 +43,11 @@ interface RackHeatmapProps {
   data: ProcessedData | null;
   onSelectServer?: (serverId: number) => void;
   selectedServer?: number | null;
+  batchMode?: boolean;
+  batchSelected?: Set<number>;
 }
 
-export default function RackHeatmap({ data, onSelectServer, selectedServer }: RackHeatmapProps) {
+export default function RackHeatmap({ data, onSelectServer, selectedServer, batchMode, batchSelected }: RackHeatmapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const cellsRef = useRef<PIXI.Container[]>([]);
@@ -54,6 +57,8 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
   const tempLabelRef = useRef<PIXI.Text[]>([]);
   const borderRef = useRef<PIXI.Graphics[]>([]);
   const glowRef = useRef<PIXI.Graphics[]>([]);
+  const filtersRef = useRef<PIXI.Filter[]>([]);
+  const startTimeRef = useRef(Date.now());
 
   // Initialize Pixi application
   useEffect(() => {
@@ -111,6 +116,16 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
       cell.addChild(spark);
       sparkGfxRef.current.push(spark);
 
+      // Create GLSL heat cell shader filter
+      try {
+        const filter = createHeatCellFilter();
+        cell.filters = [filter];
+        filtersRef.current.push(filter);
+      } catch {
+        // Shader not supported, skip
+        filtersRef.current.push(null as any);
+      }
+
       app.stage.addChild(cell);
       cellsRef.current.push(cell);
     }
@@ -118,6 +133,16 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
     const resize = () => layoutCells(app);
     window.addEventListener('resize', resize);
     layoutCells(app);
+
+    // Animate shader time uniforms
+    app.ticker.add(() => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      for (const filter of filtersRef.current) {
+        if (filter && filter.uniforms) {
+          filter.uniforms.uTime = elapsed;
+        }
+      }
+    });
 
     return () => {
       window.removeEventListener('resize', resize);
@@ -130,6 +155,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
       tempLabelRef.current = [];
       borderRef.current = [];
       glowRef.current = [];
+      filtersRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -190,10 +216,23 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
       const border = borderRef.current[i];
       border.clear();
       const isSelected = selectedServer === i;
-      const borderColor = isSelected ? 0x58a6ff : anomaly > 0.7 ? 0xf85149 : 0x1e2a3a;
-      const borderAlpha = isSelected ? 1 : anomaly > 0.7 ? 0.8 + Math.sin(Date.now() / 200) * 0.2 : 0.5;
-      border.lineStyle(isSelected ? 2 : 1, borderColor, borderAlpha);
+      const isBatchSelected = batchMode && batchSelected?.has(i);
+      const borderColor = isBatchSelected ? 0x39d2c0 : isSelected ? 0x58a6ff : anomaly > 0.7 ? 0xf85149 : 0x1e2a3a;
+      const borderAlpha = isBatchSelected ? 1 : isSelected ? 1 : anomaly > 0.7 ? 0.8 + Math.sin(Date.now() / 200) * 0.2 : 0.5;
+      border.lineStyle(isSelected || isBatchSelected ? 2 : 1, borderColor, borderAlpha);
       border.drawRoundedRect(0, 0, cellW, cellH, 3);
+
+      // Batch mode check indicator
+      if (isBatchSelected) {
+        border.lineStyle(0);
+        border.beginFill(0x39d2c0, 0.9);
+        border.drawRoundedRect(cellW - 12, 2, 10, 10, 2);
+        border.endFill();
+        border.lineStyle(1.5, 0x000000, 1);
+        border.moveTo(cellW - 10, 7);
+        border.lineTo(cellW - 7, 10);
+        border.lineTo(cellW - 4, 4);
+      }
 
       // Glow effect for critical servers
       const glow = glowRef.current[i];
@@ -207,6 +246,14 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
       // Update temp label
       tempLabelRef.current[i].text = `${Math.round(maxTemp)}°C`;
       tempLabelRef.current[i].style.fill = anomaly > 0.7 ? 0xf85149 : anomaly > 0.3 ? 0xf0c040 : 0x76d276;
+
+      // Update shader uniforms for glow and flow effects
+      const filter = filtersRef.current[i];
+      if (filter && filter.uniforms) {
+        filter.uniforms.uAnomaly = anomaly;
+        filter.uniforms.uBandwidth = anomaly * 0.5; // Use anomaly as proxy for data flow
+        filter.uniforms.uCellColor = hexToRgb(color);
+      }
 
       // Draw sparkline
       const spark = sparkGfxRef.current[i];
@@ -248,7 +295,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer }: Ra
         }
       }
     }
-  }, [data, selectedServer]);
+  }, [data, selectedServer, batchMode, batchSelected]);
 
   return (
     <div

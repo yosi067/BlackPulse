@@ -1,0 +1,235 @@
+.container {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(188, 140, 255, 0.05), rgba(88, 166, 255, 0.05));
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerIcon { font-size: 22px; }
+
+.headerTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.headerSub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.demoBadge {
+  font-size: 9px;
+  padding: 3px 8px;
+  background: rgba(240, 192, 64, 0.1);
+  border: 1px solid rgba(240, 192, 64, 0.3);
+  color: var(--accent-yellow);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  overflow: hidden;
+}
+
+.cardWide {
+  grid-column: 1 / -1;
+}
+
+.cardTitle {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.healthScore {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.healthMax {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.healthBar {
+  height: 4px;
+  background: var(--bg-primary);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.healthFill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.chart {
+  display: block;
+  margin: 4px auto;
+}
+
+.chartLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.failureGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.serverPrediction {
+  border-left: 2px solid var(--accent-blue);
+  padding-left: 8px;
+}
+
+.serverTag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent-blue);
+  margin-bottom: 4px;
+}
+
+.predRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.compName {
+  font-size: 9px;
+  color: var(--text-secondary);
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.probBar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 100px;
+}
+
+.probFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.probVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 28px;
+  text-align: right;
+}
+
+.etaVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-secondary);
+  width: 32px;
+  text-align: right;
+}
+
+.confVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: var(--text-muted);
+  width: 28px;
+  text-align: right;
+}
+
+.legendRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20px;
+  margin-top: 6px;
+  font-size: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.capacityStats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.capRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.capLabel {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.capValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.capRecommendation {
+  font-size: 9px;
+  color: var(--accent-yellow);
+  padding: 4px 8px;
+  background: rgba(240, 192, 64, 0.08);
+  border-radius: 3px;
+  margin-top: 4px;
+  line-height: 1.4;
+}

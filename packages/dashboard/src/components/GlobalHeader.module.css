@@ -142,3 +142,25 @@
   color: var(--accent-green);
   background: rgba(118, 210, 118, 0.1);
 }
+
+.toggleBtn {
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+
+.toggleBtn:hover {
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.toggleActive {
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.2);
+  box-shadow: 0 0 8px rgba(88, 166, 255, 0.2);
+}

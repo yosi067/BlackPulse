@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getDataSource } from '../data/DataSource';
 import type { ServerTelemetry, TelemetryBatch } from '../types';
+import { createSharedBuffers, type SharedBuffers } from '../workers/shared-buffer';
 
 export interface ProcessedData {
   summaries: Float32Array;       // [avg, max, anomaly] x numServers
@@ -17,6 +18,7 @@ export interface ProcessedData {
 
 export function useTelemetry() {
   const workerRef = useRef<Worker | null>(null);
+  const sharedRef = useRef<SharedBuffers | null>(null);
   const [data, setData] = useState<ProcessedData | null>(null);
   const [connected, setConnected] = useState(false);
 
@@ -27,6 +29,23 @@ export function useTelemetry() {
       { type: 'module' }
     );
     workerRef.current = worker;
+
+    // Try to set up SharedArrayBuffer double-buffering
+    const shared = createSharedBuffers();
+    if (shared) {
+      sharedRef.current = shared;
+      worker.postMessage({
+        type: 'init_shared_buffers',
+        payload: {
+          controlSAB: shared.controlSAB,
+          dataSAB0: shared.dataSAB0,
+          dataSAB1: shared.dataSAB1,
+        },
+      });
+      console.log('SharedArrayBuffer double-buffering enabled');
+    } else {
+      console.log('SharedArrayBuffer not available, using structured clone');
+    }
 
     worker.onmessage = (event) => {
       if (event.data.type === 'processed_batch') {

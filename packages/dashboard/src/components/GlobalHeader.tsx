@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
 import styles from './GlobalHeader.module.css';
 
 interface HeaderProps {
@@ -8,6 +10,10 @@ interface HeaderProps {
   connected: boolean;
   onPanic: () => void;
   onReset: () => void;
+  batchMode: boolean;
+  onToggleBatch: () => void;
+  onToggleML: () => void;
+  showMLPanel: boolean;
 }
 
 export default function GlobalHeader({
@@ -18,7 +24,12 @@ export default function GlobalHeader({
   connected,
   onPanic,
   onReset,
+  batchMode,
+  onToggleBatch,
+  onToggleML,
+  showMLPanel,
 }: HeaderProps) {
+  const { t } = useTranslation();
   return (
     <header className={styles.header}>
       <div className={styles.brand}>
@@ -29,8 +40,8 @@ export default function GlobalHeader({
           </svg>
         </div>
         <div>
-          <div className={styles.title}>OmniCenter AI</div>
-          <div className={styles.subtitle}>Blackwell NVL72 Fleet Monitor</div>
+          <div className={styles.title}>{t('header.title')}</div>
+          <div className={styles.subtitle}>{t('header.subtitle')}</div>
         </div>
         <div className={`${styles.statusDot} ${connected ? styles.online : styles.offline}`} />
       </div>
@@ -38,12 +49,12 @@ export default function GlobalHeader({
       <div className={styles.metrics}>
         <div className={styles.metric}>
           <div className={styles.metricValue}>{totalServers}</div>
-          <div className={styles.metricLabel}>MACHINES</div>
+          <div className={styles.metricLabel}>{t('header.machines')}</div>
         </div>
         <div className={styles.divider} />
         <div className={styles.metric}>
           <div className={styles.metricValue}>{avgPue.toFixed(2)}</div>
-          <div className={styles.metricLabel}>AVG PUE</div>
+          <div className={styles.metricLabel}>{t('header.avgPue')}</div>
         </div>
         <div className={styles.divider} />
         <div className={styles.metric}>
@@ -51,23 +62,38 @@ export default function GlobalHeader({
             {totalWattageKW.toFixed(1)}
             <span className={styles.unit}> kW</span>
           </div>
-          <div className={styles.metricLabel}>TOTAL POWER</div>
+          <div className={styles.metricLabel}>{t('header.totalPower')}</div>
         </div>
         <div className={styles.divider} />
         <div className={styles.metric}>
           <div className={`${styles.metricValue} ${alertCount > 0 ? styles.alertActive : ''}`}>
             {alertCount}
           </div>
-          <div className={styles.metricLabel}>ALERTS</div>
+          <div className={styles.metricLabel}>{t('header.alerts')}</div>
         </div>
       </div>
 
       <div className={styles.controls}>
-        <button className={styles.panicBtn} onClick={onPanic} title="Trigger panic mode on 5 random servers">
-          ⚡ PANIC
+        <LanguageSwitcher />
+        <button
+          className={`${styles.toggleBtn} ${showMLPanel ? styles.toggleActive : ''}`}
+          onClick={onToggleML}
+          title="Toggle AI/ML Panel"
+        >
+          🤖
         </button>
-        <button className={styles.resetBtn} onClick={onReset} title="Reset all servers to normal">
-          ↻ RESET
+        <button
+          className={`${styles.toggleBtn} ${batchMode ? styles.toggleActive : ''}`}
+          onClick={onToggleBatch}
+          title="Batch Mode (B)"
+        >
+          ☐
+        </button>
+        <button className={styles.panicBtn} onClick={onPanic} title="Trigger panic mode on 5 random servers (P)">
+          {t('header.panic')}
+        </button>
+        <button className={styles.resetBtn} onClick={onReset} title="Reset all servers to normal (R)">
+          {t('header.reset')}
         </button>
       </div>
     </header>
