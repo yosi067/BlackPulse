@@ -1,0 +1,144 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 56px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+.subtitle {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 6px;
+}
+
+.online {
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--glow-green);
+}
+
+.offline {
+  background: var(--accent-red);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.metrics {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.metric {
+  text-align: center;
+  padding: 0 20px;
+}
+
+.metricValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.metricLabel {
+  font-size: 8px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 1px;
+}
+
+.power {
+  color: var(--accent-cyan);
+}
+
+.unit {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.alertActive {
+  color: var(--accent-red);
+  animation: pulse-glow 1s ease-in-out infinite;
+}
+
+.divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+.panicBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border: 1px solid var(--accent-red);
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--accent-red);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.panicBtn:hover {
+  background: rgba(248, 81, 73, 0.25);
+  box-shadow: 0 0 12px rgba(248, 81, 73, 0.3);
+}
+
+.resetBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.resetBtn:hover {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  background: rgba(118, 210, 118, 0.1);
+}

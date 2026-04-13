@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  bmc-simulator:
+    build: ./packages/simulator
+    ports:
+      - "3001-3110:3001"
+    environment:
+      - PORT=3001
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+  dashboard:
+    build: ./packages/dashboard
+    ports:
+      - "5173:80"
+    depends_on:
+      - bmc-simulator
+    restart: unless-stopped

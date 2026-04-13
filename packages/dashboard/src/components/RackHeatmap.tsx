@@ -1,0 +1,264 @@
+import { useEffect, useRef, useCallback } from 'react';
+import * as PIXI from 'pixi.js';
+import type { ProcessedData } from '../hooks/useTelemetry';
+import type { ServerTelemetry } from '../types';
+
+const GRID_COLS = 10;
+const GRID_ROWS = 10;
+const CELL_PAD = 4;
+const SPARKLINE_POINTS = 30;
+const HEADER_H = 20;
+
+// Color interpolation: green -> yellow -> red based on anomaly score
+function tempToColor(anomaly: number): number {
+  if (anomaly <= 0) return 0x1a3a2a; // dark green
+  if (anomaly < 0.3) {
+    const t = anomaly / 0.3;
+    return lerpColor(0x76d276, 0xf0c040, t);
+  }
+  if (anomaly < 0.7) {
+    const t = (anomaly - 0.3) / 0.4;
+    return lerpColor(0xf0c040, 0xf85149, t);
+  }
+  return 0xf85149;
+}
+
+function lerpColor(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+  const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return (r << 16) | (g << 8) | bl;
+}
+
+function statusText(maxTemp: number): string {
+  if (maxTemp >= 85) return 'CRIT';
+  if (maxTemp >= 75) return 'WARN';
+  return 'OK';
+}
+
+interface RackHeatmapProps {
+  data: ProcessedData | null;
+  onSelectServer?: (serverId: number) => void;
+  selectedServer?: number | null;
+}
+
+export default function RackHeatmap({ data, onSelectServer, selectedServer }: RackHeatmapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const appRef = useRef<PIXI.Application | null>(null);
+  const cellsRef = useRef<PIXI.Container[]>([]);
+  const cellBgRef = useRef<PIXI.Graphics[]>([]);
+  const sparkGfxRef = useRef<PIXI.Graphics[]>([]);
+  const labelRef = useRef<PIXI.Text[]>([]);
+  const tempLabelRef = useRef<PIXI.Text[]>([]);
+  const borderRef = useRef<PIXI.Graphics[]>([]);
+  const glowRef = useRef<PIXI.Graphics[]>([]);
+
+  // Initialize Pixi application
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const app = new PIXI.Application({
+      resizeTo: containerRef.current,
+      backgroundColor: 0x0b0e14,
+      antialias: true,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true,
+    });
+    containerRef.current.appendChild(app.view as HTMLCanvasElement);
+    appRef.current = app;
+
+    // Create cells
+    const numServers = GRID_COLS * GRID_ROWS;
+    for (let i = 0; i < numServers; i++) {
+      const cell = new PIXI.Container();
+      cell.eventMode = 'static';
+      cell.cursor = 'pointer';
+      cell.on('pointertap', () => onSelectServer?.(i));
+
+      const glow = new PIXI.Graphics();
+      cell.addChild(glow);
+      glowRef.current.push(glow);
+
+      const bg = new PIXI.Graphics();
+      cell.addChild(bg);
+      cellBgRef.current.push(bg);
+
+      const border = new PIXI.Graphics();
+      cell.addChild(border);
+      borderRef.current.push(border);
+
+      const label = new PIXI.Text(`S${String(i).padStart(3, '0')}`, {
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 9,
+        fill: 0x8b949e,
+      });
+      label.anchor.set(0, 0);
+      cell.addChild(label);
+      labelRef.current.push(label);
+
+      const tempLabel = new PIXI.Text('--°C', {
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 9,
+        fill: 0xe6edf3,
+      });
+      tempLabel.anchor.set(1, 0);
+      cell.addChild(tempLabel);
+      tempLabelRef.current.push(tempLabel);
+
+      const spark = new PIXI.Graphics();
+      cell.addChild(spark);
+      sparkGfxRef.current.push(spark);
+
+      app.stage.addChild(cell);
+      cellsRef.current.push(cell);
+    }
+
+    const resize = () => layoutCells(app);
+    window.addEventListener('resize', resize);
+    layoutCells(app);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      app.destroy(true, { children: true, texture: true });
+      appRef.current = null;
+      cellsRef.current = [];
+      cellBgRef.current = [];
+      sparkGfxRef.current = [];
+      labelRef.current = [];
+      tempLabelRef.current = [];
+      borderRef.current = [];
+      glowRef.current = [];
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const layoutCells = useCallback((app: PIXI.Application) => {
+    const w = app.screen.width;
+    const h = app.screen.height;
+    const cellW = (w - CELL_PAD * (GRID_COLS + 1)) / GRID_COLS;
+    const cellH = (h - CELL_PAD * (GRID_ROWS + 1)) / GRID_ROWS;
+
+    for (let i = 0; i < cellsRef.current.length; i++) {
+      const col = i % GRID_COLS;
+      const row = Math.floor(i / GRID_COLS);
+      const x = CELL_PAD + col * (cellW + CELL_PAD);
+      const y = CELL_PAD + row * (cellH + CELL_PAD);
+
+      cellsRef.current[i].position.set(x, y);
+
+      // Draw background
+      cellBgRef.current[i].clear();
+      cellBgRef.current[i].beginFill(0x111820, 0.9);
+      cellBgRef.current[i].drawRoundedRect(0, 0, cellW, cellH, 3);
+      cellBgRef.current[i].endFill();
+
+      // Position labels
+      labelRef.current[i].position.set(4, 2);
+      tempLabelRef.current[i].position.set(cellW - 4, 2);
+
+      // Store dimensions for sparkline drawing
+      (cellsRef.current[i] as any)._cellW = cellW;
+      (cellsRef.current[i] as any)._cellH = cellH;
+    }
+  }, []);
+
+  // Update cells with telemetry data
+  useEffect(() => {
+    if (!data || !appRef.current) return;
+
+    const numServers = Math.min(data.summaries.length / 3, cellsRef.current.length);
+
+    for (let i = 0; i < numServers; i++) {
+      const avgTemp = data.summaries[i * 3];
+      const maxTemp = data.summaries[i * 3 + 1];
+      const anomaly = data.summaries[i * 3 + 2];
+
+      const cellW = (cellsRef.current[i] as any)._cellW || 80;
+      const cellH = (cellsRef.current[i] as any)._cellH || 60;
+      const color = tempToColor(anomaly);
+
+      // Background with gradient fill
+      const bg = cellBgRef.current[i];
+      bg.clear();
+      bg.beginFill(color, 0.15);
+      bg.drawRoundedRect(0, 0, cellW, cellH, 3);
+      bg.endFill();
+
+      // Border
+      const border = borderRef.current[i];
+      border.clear();
+      const isSelected = selectedServer === i;
+      const borderColor = isSelected ? 0x58a6ff : anomaly > 0.7 ? 0xf85149 : 0x1e2a3a;
+      const borderAlpha = isSelected ? 1 : anomaly > 0.7 ? 0.8 + Math.sin(Date.now() / 200) * 0.2 : 0.5;
+      border.lineStyle(isSelected ? 2 : 1, borderColor, borderAlpha);
+      border.drawRoundedRect(0, 0, cellW, cellH, 3);
+
+      // Glow effect for critical servers
+      const glow = glowRef.current[i];
+      glow.clear();
+      if (anomaly > 0.7) {
+        glow.beginFill(0xf85149, 0.08 + Math.sin(Date.now() / 300) * 0.04);
+        glow.drawRoundedRect(-2, -2, cellW + 4, cellH + 4, 5);
+        glow.endFill();
+      }
+
+      // Update temp label
+      tempLabelRef.current[i].text = `${Math.round(maxTemp)}°C`;
+      tempLabelRef.current[i].style.fill = anomaly > 0.7 ? 0xf85149 : anomaly > 0.3 ? 0xf0c040 : 0x76d276;
+
+      // Draw sparkline
+      const spark = sparkGfxRef.current[i];
+      spark.clear();
+      const sparkData = data.sparklines[i];
+      if (sparkData && sparkData.length > 1) {
+        const sparkY = HEADER_H + 2;
+        const sparkH = cellH - sparkY - 4;
+        const sparkW = cellW - 8;
+        const x0 = 4;
+
+        // Find data range
+        let min = Infinity, max = -Infinity;
+        for (let j = 0; j < sparkData.length; j++) {
+          if (sparkData[j] < min) min = sparkData[j];
+          if (sparkData[j] > max) max = sparkData[j];
+        }
+        const range = max - min || 1;
+
+        // Fill area under the curve
+        spark.beginFill(color, 0.1);
+        spark.moveTo(x0, sparkY + sparkH);
+        for (let j = 0; j < sparkData.length; j++) {
+          const px = x0 + (j / (sparkData.length - 1)) * sparkW;
+          const py = sparkY + sparkH - ((sparkData[j] - min) / range) * sparkH;
+          spark.lineTo(px, py);
+        }
+        spark.lineTo(x0 + sparkW, sparkY + sparkH);
+        spark.closePath();
+        spark.endFill();
+
+        // Draw line
+        spark.lineStyle(1.5, color, 0.8);
+        for (let j = 0; j < sparkData.length; j++) {
+          const px = x0 + (j / (sparkData.length - 1)) * sparkW;
+          const py = sparkY + sparkH - ((sparkData[j] - min) / range) * sparkH;
+          if (j === 0) spark.moveTo(px, py);
+          else spark.lineTo(px, py);
+        }
+      }
+    }
+  }, [data, selectedServer]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    />
+  );
+}

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.vite/
+target/
+pkg/
+*.wasm
+!packages/wasm-processor/src/**
+.env
+.env.local
