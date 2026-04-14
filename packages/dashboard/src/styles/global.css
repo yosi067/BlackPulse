@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-primary: #0b0e14;
-  --bg-secondary: #0d1117;
-  --bg-card: #111820;
-  --bg-card-hover: #161d27;
-  --border: #1e2a3a;
-  --border-bright: #2d4a6f;
+  --bg-primary: #131820;
+  --bg-secondary: #171d26;
+  --bg-card: #1c2430;
+  --bg-card-hover: #232c38;
+  --border: #2a3848;
+  --border-bright: #3d5a80;
   --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
+  --text-secondary: #9ba4ae;
+  --text-muted: #5c6370;
   --accent-green: #76d276;
   --accent-yellow: #f0c040;
   --accent-red: #f85149;
@@ -17,9 +17,9 @@
   --accent-cyan: #39d2c0;
   --accent-purple: #bc8cff;
   --nvidia-green: #76b900;
-  --glow-green: rgba(118, 210, 118, 0.3);
-  --glow-red: rgba(248, 81, 73, 0.4);
-  --glow-blue: rgba(88, 166, 255, 0.3);
+  --glow-green: rgba(118, 210, 118, 0.35);
+  --glow-red: rgba(248, 81, 73, 0.45);
+  --glow-blue: rgba(88, 166, 255, 0.35);
 }
 
 * {

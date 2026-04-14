@@ -69,6 +69,16 @@
   background: var(--bg-secondary);
 }
 
+.heatmapCompact {
+  height: 240px;
+  min-height: 240px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
 .sidebar {
   width: 280px;
   background: var(--bg-secondary);

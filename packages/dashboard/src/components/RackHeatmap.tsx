@@ -12,7 +12,7 @@ const HEADER_H = 20;
 
 // Color interpolation: green -> yellow -> red based on anomaly score
 function tempToColor(anomaly: number): number {
-  if (anomaly <= 0) return 0x1a3a2a; // dark green
+  if (anomaly <= 0) return 0x1f4a30; // dark green
   if (anomaly < 0.3) {
     const t = anomaly / 0.3;
     return lerpColor(0x76d276, 0xf0c040, t);
@@ -60,6 +60,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
   const glowRef = useRef<PIXI.Graphics[]>([]);
   const filtersRef = useRef<PIXI.Filter[]>([]);
   const startTimeRef = useRef(Date.now());
+  const visualMapRef = useRef<number[]>(Array.from({ length: 100 }, (_, i) => i));
 
   // Initialize Pixi application
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
 
     const app = new PIXI.Application({
       resizeTo: containerRef.current,
-      backgroundColor: 0x0b0e14,
+      backgroundColor: 0x131820,
       antialias: true,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
@@ -81,7 +82,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
       const cell = new PIXI.Container();
       cell.eventMode = 'static';
       cell.cursor = 'pointer';
-      cell.on('pointertap', () => onSelectServer?.(i));
+      cell.on('pointertap', () => onSelectServer?.(visualMapRef.current[i] ?? i));
 
       const glow = new PIXI.Graphics();
       cell.addChild(glow);
@@ -131,8 +132,19 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
       cellsRef.current.push(cell);
     }
 
-    const resize = () => layoutCells(app);
-    window.addEventListener('resize', resize);
+    const resize = () => {
+      if (!containerRef.current) return;
+      const cw = containerRef.current.clientWidth;
+      const ch = containerRef.current.clientHeight;
+      if (cw > 0 && ch > 0) {
+        app.renderer.resize(cw, ch);
+        layoutCells(app);
+      }
+    };
+
+    // Use ResizeObserver to detect any container size change (not just window resize)
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(containerRef.current);
     layoutCells(app);
 
     // Animate shader time uniforms
@@ -146,7 +158,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
     });
 
     return () => {
-      window.removeEventListener('resize', resize);
+      ro.disconnect();
       app.destroy(true, { children: true, texture: true });
       appRef.current = null;
       cellsRef.current = [];
@@ -177,7 +189,7 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
 
       // Draw background
       cellBgRef.current[i].clear();
-      cellBgRef.current[i].beginFill(0x111820, 0.9);
+      cellBgRef.current[i].beginFill(0x1c2430, 0.9);
       cellBgRef.current[i].drawRoundedRect(0, 0, cellW, cellH, 3);
       cellBgRef.current[i].endFill();
 
@@ -197,32 +209,66 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
 
     const numServers = Math.min(data.summaries.length / 3, cellsRef.current.length);
 
+    // Build a mapping: visual grid position -> server id
+    // If filteredIds provided (sorted/filtered), show those first, rest dimmed
+    const sortedVisible = filteredIds ?? Array.from({ length: numServers }, (_, i) => i);
+    const hiddenSet = new Set<number>();
     for (let i = 0; i < numServers; i++) {
-      const avgTemp = data.summaries[i * 3];
-      const maxTemp = data.summaries[i * 3 + 1];
-      const anomaly = data.summaries[i * 3 + 2];
+      if (!sortedVisible.includes(i)) hiddenSet.add(i);
+    }
+    // Visual order: sorted visible first, then hidden
+    const visualOrder: number[] = [...sortedVisible, ...hiddenSet];
+    visualMapRef.current = visualOrder;
 
-      // Dim servers not in filter
-      const isFiltered = filteredIds ? filteredIds.includes(i) : true;
-      const cellW = (cellsRef.current[i] as any)._cellW || 80;
-      const cellH = (cellsRef.current[i] as any)._cellH || 60;
+    for (let vi = 0; vi < numServers; vi++) {
+      const serverId = visualOrder[vi] ?? vi;
+      if (serverId >= numServers) continue;
+
+      const avgTemp = data.summaries[serverId * 3];
+      const maxTemp = data.summaries[serverId * 3 + 1];
+      const anomaly = data.summaries[serverId * 3 + 2];
+
+      // Determine if this server is in the filtered set
+      const isFiltered = sortedVisible.includes(serverId);
+      const cellW = (cellsRef.current[vi] as any)._cellW || 80;
+      const cellH = (cellsRef.current[vi] as any)._cellH || 60;
       const color = tempToColor(anomaly);
 
+      // Update cell label to reflect which server is shown here
+      labelRef.current[vi].text = `S${String(serverId).padStart(3, '0')}`;
+
       // Background with gradient fill
-      const bg = cellBgRef.current[i];
+      const bg = cellBgRef.current[vi];
       bg.clear();
-      bg.beginFill(color, isFiltered ? 0.15 : 0.03);
+      bg.beginFill(color, isFiltered ? 0.15 : 0.02);
       bg.drawRoundedRect(0, 0, cellW, cellH, 3);
       bg.endFill();
 
-      // Dim non-filtered cells
-      cellsRef.current[i].alpha = isFiltered ? 1 : 0.25;
+      // Dim non-filtered cells significantly
+      cellsRef.current[vi].alpha = isFiltered ? 1 : 0.1;
+      cellsRef.current[vi].visible = true;
+
+      // Hide labels for non-filtered cells
+      labelRef.current[vi].visible = isFiltered;
+      tempLabelRef.current[vi].visible = isFiltered;
+      sparkGfxRef.current[vi].visible = isFiltered;
+
+      // Disable shader on hidden cells to prevent residue
+      const filter = filtersRef.current[vi];
+      if (filter) {
+        cellsRef.current[vi].filters = isFiltered ? [filter] : [];
+        if (isFiltered && filter.uniforms) {
+          filter.uniforms.uAnomaly = anomaly;
+          filter.uniforms.uBandwidth = anomaly * 0.5;
+          filter.uniforms.uCellColor = hexToRgb(color);
+        }
+      }
 
       // Border
-      const border = borderRef.current[i];
+      const border = borderRef.current[vi];
       border.clear();
-      const isSelected = selectedServer === i;
-      const isBatchSelected = batchMode && batchSelected?.has(i);
+      const isSelected = selectedServer === serverId;
+      const isBatchSelected = batchMode && batchSelected?.has(serverId);
       const borderColor = isBatchSelected ? 0x39d2c0 : isSelected ? 0x58a6ff : anomaly > 0.7 ? 0xf85149 : 0x1e2a3a;
       const borderAlpha = isBatchSelected ? 1 : isSelected ? 1 : anomaly > 0.7 ? 0.8 + Math.sin(Date.now() / 200) * 0.2 : 0.5;
       border.lineStyle(isSelected || isBatchSelected ? 2 : 1, borderColor, borderAlpha);
@@ -241,30 +287,22 @@ export default function RackHeatmap({ data, onSelectServer, selectedServer, batc
       }
 
       // Glow effect for critical servers
-      const glow = glowRef.current[i];
+      const glow = glowRef.current[vi];
       glow.clear();
-      if (anomaly > 0.7) {
+      if (anomaly > 0.7 && isFiltered) {
         glow.beginFill(0xf85149, 0.08 + Math.sin(Date.now() / 300) * 0.04);
         glow.drawRoundedRect(-2, -2, cellW + 4, cellH + 4, 5);
         glow.endFill();
       }
 
       // Update temp label
-      tempLabelRef.current[i].text = `${Math.round(maxTemp)}°C`;
-      tempLabelRef.current[i].style.fill = anomaly > 0.7 ? 0xf85149 : anomaly > 0.3 ? 0xf0c040 : 0x76d276;
-
-      // Update shader uniforms for glow and flow effects
-      const filter = filtersRef.current[i];
-      if (filter && filter.uniforms) {
-        filter.uniforms.uAnomaly = anomaly;
-        filter.uniforms.uBandwidth = anomaly * 0.5; // Use anomaly as proxy for data flow
-        filter.uniforms.uCellColor = hexToRgb(color);
-      }
+      tempLabelRef.current[vi].text = `${Math.round(maxTemp)}°C`;
+      tempLabelRef.current[vi].style.fill = anomaly > 0.7 ? 0xf85149 : anomaly > 0.3 ? 0xf0c040 : 0x76d276;
 
       // Draw sparkline
-      const spark = sparkGfxRef.current[i];
+      const spark = sparkGfxRef.current[vi];
       spark.clear();
-      const sparkData = data.sparklines[i];
+      const sparkData = data.sparklines[serverId];
       if (sparkData && sparkData.length > 1) {
         const sparkY = HEADER_H + 2;
         const sparkH = cellH - sparkY - 4;

@@ -16,7 +16,7 @@ const RACK_GAP_Z = 4.0;
 const AISLE_Z = 2.0;
 
 function tempToColor(anomaly: number): THREE.Color {
-  if (anomaly <= 0) return new THREE.Color(0x1a3a2a);
+  if (anomaly <= 0) return new THREE.Color(0x1f4a30);
   if (anomaly < 0.3) return new THREE.Color(0x76d276).lerp(new THREE.Color(0xf0c040), anomaly / 0.3);
   if (anomaly < 0.7) return new THREE.Color(0xf0c040).lerp(new THREE.Color(0xf85149), (anomaly - 0.3) / 0.4);
   return new THREE.Color(0xf85149);
@@ -36,9 +36,11 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
   const controlsRef = useRef<OrbitControls | null>(null);
   const serverMeshesRef = useRef<THREE.Mesh[]>([]);
   const ledMeshesRef = useRef<THREE.Mesh[]>([]);
+  const glowMeshesRef = useRef<THREE.Mesh[]>([]);
   const raycasterRef = useRef(new THREE.Raycaster());
   const mouseRef = useRef(new THREE.Vector2());
   const frameRef = useRef(0);
+  const anomalyRef = useRef<Float32Array>(new Float32Array(100));
   const [hoveredServer, setHoveredServer] = useState<number | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; id: number } | null>(null);
 
@@ -50,8 +52,8 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
 
     // Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x080b10);
-    scene.fog = new THREE.FogExp2(0x080b10, 0.015);
+    scene.background = new THREE.Color(0x131820);
+    scene.fog = new THREE.FogExp2(0x131820, 0.01);
     sceneRef.current = scene;
 
     // Camera — isometric-like perspective
@@ -67,7 +69,7 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.8;
+    renderer.toneMappingExposure = 1.1;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -82,10 +84,10 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
     controlsRef.current = controls;
 
     // Lights
-    const ambientLight = new THREE.AmbientLight(0x1a1f2e, 1.5);
+    const ambientLight = new THREE.AmbientLight(0x2a3040, 2.5);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0x4488cc, 0.8);
+    const mainLight = new THREE.DirectionalLight(0x5599dd, 1.2);
     mainLight.position.set(10, 20, 10);
     mainLight.castShadow = true;
     mainLight.shadow.mapSize.width = 1024;
@@ -98,14 +100,14 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
     scene.add(mainLight);
 
     // Green uplight for NVIDIA feel
-    const upLight = new THREE.PointLight(0x76b900, 0.4, 30);
+    const upLight = new THREE.PointLight(0x76b900, 0.6, 30);
     upLight.position.set(0, 0.1, 0);
     scene.add(upLight);
 
     // Floor
     const floorGeo = new THREE.PlaneGeometry(40, 30);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x0a0e14,
+      color: 0x151c25,
       roughness: 0.85,
       metalness: 0.1,
     });
@@ -115,16 +117,16 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
     scene.add(floor);
 
     // Grid helper
-    const grid = new THREE.GridHelper(40, 40, 0x152030, 0x0f1820);
+    const grid = new THREE.GridHelper(40, 40, 0x1e2d40, 0x182430);
     grid.position.y = 0.01;
     scene.add(grid);
 
     // Build racks and servers
     const rackFrameMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1f2e, roughness: 0.6, metalness: 0.8,
+      color: 0x252a38, roughness: 0.6, metalness: 0.8,
     });
     const serverMat = new THREE.MeshStandardMaterial({
-      color: 0x1a2a1a, roughness: 0.4, metalness: 0.6,
+      color: 0x253025, roughness: 0.4, metalness: 0.6,
     });
     const ledGeo = new THREE.BoxGeometry(0.06, 0.06, 0.02);
 
@@ -137,7 +139,7 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
         // Rack frame (wireframe)
         const frameGeo = new THREE.BoxGeometry(RACK_W, RACK_H, RACK_D);
         const frameEdges = new THREE.EdgesGeometry(frameGeo);
-        const frameLine = new THREE.LineSegments(frameEdges, new THREE.LineBasicMaterial({ color: 0x2a3a4f, opacity: 0.6, transparent: true }));
+        const frameLine = new THREE.LineSegments(frameEdges, new THREE.LineBasicMaterial({ color: 0x3a4a5f, opacity: 0.7, transparent: true }));
         frameLine.position.set(rx, RACK_H / 2, rz);
         scene.add(frameLine);
 
@@ -172,7 +174,34 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
           led.position.set(rx - RACK_W / 2 + 0.2, sy + SERVER_H / 2, rz + RACK_D / 2 - 0.02);
           scene.add(led);
           ledMeshesRef.current[serverId] = led;
+
+          // Anomaly glow plane (transparent, scales with anomaly)
+          const glowGeo = new THREE.PlaneGeometry(RACK_W - 0.1, SERVER_H + 0.05);
+          const glowMat = new THREE.MeshBasicMaterial({
+            color: 0xf85149, transparent: true, opacity: 0,
+            side: THREE.DoubleSide, depthWrite: false,
+          });
+          const glowPlane = new THREE.Mesh(glowGeo, glowMat);
+          glowPlane.position.set(rx, sy + SERVER_H / 2, rz + RACK_D / 2 + 0.01);
+          scene.add(glowPlane);
+          glowMeshesRef.current[serverId] = glowPlane;
         }
+
+        // Rack label sprite
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 128;
+        labelCanvas.height = 32;
+        const ctx = labelCanvas.getContext('2d')!;
+        ctx.fillStyle = '#58a6ff';
+        ctx.font = 'bold 20px JetBrains Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Rack ${rackIdx}`, 64, 22);
+        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+        const labelSprite = new THREE.SpriteMaterial({ map: labelTexture, transparent: true, opacity: 0.8 });
+        const sprite = new THREE.Sprite(labelSprite);
+        sprite.position.set(rx, RACK_H + 0.5, rz);
+        sprite.scale.set(2, 0.5, 1);
+        scene.add(sprite);
 
         // CDU (Coolant Distribution Unit) next to rack
         if (rc === 0 && rr === 0) {
@@ -233,9 +262,45 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
     container.addEventListener('click', handleClick);
 
     // Animation loop
+    let animTime = 0;
+    const clock = new THREE.Clock();
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      animTime += dt;
       controls.update();
+
+      // Animate anomaly glow flashing
+      for (let i = 0; i < glowMeshesRef.current.length; i++) {
+        const glow = glowMeshesRef.current[i];
+        if (!glow) continue;
+        const anomaly = anomalyRef.current[i] ?? 0;
+        const mat = glow.material as THREE.MeshBasicMaterial;
+        if (anomaly > 0.7) {
+          // Critical: fast flash
+          mat.opacity = 0.15 + Math.abs(Math.sin(animTime * 4)) * 0.35;
+          mat.color.set(0xf85149);
+        } else if (anomaly > 0.3) {
+          // Warning: slow pulse
+          mat.opacity = 0.05 + Math.abs(Math.sin(animTime * 2)) * 0.12;
+          mat.color.set(0xf0c040);
+        } else {
+          mat.opacity = 0;
+        }
+      }
+
+      // LED blink for critical servers
+      for (let i = 0; i < ledMeshesRef.current.length; i++) {
+        const led = ledMeshesRef.current[i];
+        if (!led) continue;
+        const anomaly = anomalyRef.current[i] ?? 0;
+        if (anomaly > 0.7) {
+          led.visible = Math.sin(animTime * 6) > 0;
+        } else {
+          led.visible = true;
+        }
+      }
+
       renderer.render(scene, camera);
     };
     animate();
@@ -249,10 +314,11 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
-    window.addEventListener('resize', handleResize);
+    const ro = new ResizeObserver(() => handleResize());
+    ro.observe(container);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      ro.disconnect();
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('click', handleClick);
       cancelAnimationFrame(frameRef.current);
@@ -263,6 +329,7 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
       }
       serverMeshesRef.current = [];
       ledMeshesRef.current = [];
+      glowMeshesRef.current = [];
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -275,6 +342,7 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
     for (let i = 0; i < numServers; i++) {
       const anomaly = data.summaries[i * 3 + 2];
       const maxTemp = data.summaries[i * 3 + 1];
+      anomalyRef.current[i] = anomaly;
       const mesh = serverMeshesRef.current[i];
       const led = ledMeshesRef.current[i];
       if (!mesh || !led) continue;
@@ -311,20 +379,43 @@ export default function DataCenter3D({ data, onSelectServer, selectedServer }: D
         <span className={styles.hint}>Drag to rotate · Scroll to zoom · Click to select</span>
       </div>
       <div ref={containerRef} className={styles.canvas}>
-        {tooltip && data && (
-          <div
-            className={styles.tooltip}
-            style={{ left: tooltip.x + 12, top: tooltip.y - 30 }}
-          >
-            <div className={styles.tooltipTitle}>
-              S{String(tooltip.id).padStart(3, '0')}
+        {tooltip && data && (() => {
+          const sid = tooltip.id;
+          const maxTemp = data.summaries[sid * 3 + 1];
+          const anomaly = data.summaries[sid * 3 + 2];
+          const serverData = data.rawBatch?.find(s => s.serverId === sid);
+          const status = maxTemp >= 85 ? 'critical' : maxTemp >= 75 ? 'warning' : 'normal';
+          const statusColor = status === 'critical' ? '#f85149' : status === 'warning' ? '#f0c040' : '#76d276';
+          return (
+            <div
+              className={styles.tooltip}
+              style={{ left: tooltip.x + 14, top: tooltip.y - 40 }}
+            >
+              <div className={styles.tooltipTitle}>
+                <span className={styles.tooltipStatus} style={{ background: statusColor }} />
+                S{String(sid).padStart(3, '0')} · Rack {Math.floor(sid / 10)}
+              </div>
+              <div className={styles.tooltipInfo}>
+                <div className={styles.tooltipRow}>
+                  <span>Temp</span><span style={{ color: statusColor }}>{maxTemp?.toFixed(1)}°C</span>
+                </div>
+                <div className={styles.tooltipRow}>
+                  <span>Anomaly</span><span>{(anomaly * 100).toFixed(0)}%</span>
+                </div>
+                {serverData && (
+                  <>
+                    <div className={styles.tooltipRow}>
+                      <span>Power</span><span>{serverData.power.chassisWattage.toFixed(0)} W</span>
+                    </div>
+                    <div className={styles.tooltipRow}>
+                      <span>GPU Util</span><span>{(serverData.compute.gpuUtilization.reduce((a, b) => a + b, 0) / serverData.compute.gpuUtilization.length).toFixed(0)}%</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
-            <div className={styles.tooltipInfo}>
-              {data.summaries[tooltip.id * 3 + 1]?.toFixed(1)}°C ·
-              Rack {Math.floor(tooltip.id / 10)}
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

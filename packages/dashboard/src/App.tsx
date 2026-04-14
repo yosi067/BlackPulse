@@ -142,7 +142,7 @@ export default function App() {
             </div>
           </div>
 
-          <ServerFilter onFilterChange={setFilter} />
+          <ServerFilter onFilterChange={setFilter} matchCount={filteredServerIds.length} />
 
           {/* 3D Datacenter View (toggle) */}
           {show3D && (
@@ -158,7 +158,7 @@ export default function App() {
           )}
 
           {/* 2D Heatmap */}
-          <div className={styles.heatmapContainer}>
+          <div className={show3D ? styles.heatmapCompact : styles.heatmapContainer}>
             <RackHeatmap
               data={data}
               selectedServer={selectedServer}

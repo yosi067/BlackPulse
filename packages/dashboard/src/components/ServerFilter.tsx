@@ -4,6 +4,7 @@ import styles from './ServerFilter.module.css';
 
 interface ServerFilterProps {
   onFilterChange: (filter: ServerFilterState) => void;
+  matchCount?: number;
 }
 
 export interface ServerFilterState {
@@ -13,7 +14,7 @@ export interface ServerFilterState {
   sortBy: 'id' | 'temp' | 'power' | 'anomaly';
 }
 
-export default function ServerFilter({ onFilterChange }: ServerFilterProps) {
+export default function ServerFilter({ onFilterChange, matchCount }: ServerFilterProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ServerFilterState['status']>('all');
@@ -49,6 +50,10 @@ export default function ServerFilter({ onFilterChange }: ServerFilterProps) {
           <button className={styles.clearBtn} onClick={() => update({ search: '' })}>✕</button>
         )}
       </div>
+
+      {matchCount !== undefined && (search || status !== 'all' || rack !== null) && (
+        <span className={styles.matchCount}>{matchCount} / 100</span>
+      )}
 
       <div className={styles.filters}>
         <select

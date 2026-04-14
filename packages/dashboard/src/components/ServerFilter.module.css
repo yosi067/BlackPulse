@@ -58,6 +58,16 @@
   color: var(--text-primary);
 }
 
+.matchCount {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent-blue);
+  white-space: nowrap;
+  padding: 4px 8px;
+  background: rgba(88, 166, 255, 0.1);
+  border-radius: 4px;
+}
+
 .filters {
   display: flex;
   gap: 6px;
