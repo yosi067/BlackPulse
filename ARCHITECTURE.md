@@ -759,6 +759,68 @@ grafana:      # Grafana 10.4.0, port 3000 (admin/omnicenter)
 - `grafana/provisioning/dashboards/dashboard.yml` → Auto-load dashboard JSON
 - `grafana/dashboards/omnicenter.json` → 9 面板 Dashboard
 
+#### Grafana 的定位：歷史分析 vs 即時監控
+
+本專案同時存在兩套可視化系統，各司其職：
+
+| 比較維度 | React + Pixi.js + Three.js Dashboard | Grafana Dashboard |
+|---|---|---|
+| **角色** | 主要操作介面（NOC 即時戰情室） | 輔助分析工具（歷史趨勢 / 容量規劃） |
+| **數據傳输** | WebSocket 推送（Push），每秒即時更新 | InfluxDB Flux 查詢（Pull），使用者自訂時間範圍 |
+| **視覺化** | 高度客製化：Pixi.js Canvas 熱力圖、Three.js 3D 等角機房、GLSL Shader 光效、粒子流動動畫、NVLink 拓撲、GPU 火焰圖 | 標準圖表庫：折線圖 (timeseries)、gauge、histogram、表格，透過 JSON 設定 |
+| **互動能力** | 鍵盤快捷鍵導航、Raycaster 3D 點擊下鑽、批次操作、告警規則 CRUD、自動修復觸發、伺服器篩選排序 | Grafana 原生：時間範圍拖曳、Dashboard 變數篩選、Annotation、Alert rules |
+| **部署方式** | 獨立運行（`npm run dev`）或靜態部署（GitHub Pages），無需後端依賴 | 必須透過 Docker Compose 啟動，依賴 InfluxDB 資料源 |
+| **開發成本** | 所有 UI 元件從零建構（React + Canvas API + WebGL） | 零程式碼，編輯 JSON 即可新增/修改面板 |
+| **典型問題** | 「這台伺服器現在怎麼了？要不要重啟？」 | 「過去 6 小時 GPU 溫度的趨勢？冷卻液流速有無遞減？」 |
+
+**為什麼需要兩者？**
+
+在真實資料中心監控場景中，這兩種工具通常會同時部署：
+- **操作員（NOC）** 使用自建 React Dashboard 進行 7×24 值班盯盤，即時反應異常並執行操作（重啟、功耗調整、批次維護）
+- **SRE / 基礎設施工程師** 使用 Grafana 做事後回溯（root cause analysis）、長期趨勢觀測、容量規劃報表，並設定 Grafana Alerting 做為次要告警通道
+
+#### 資料流架構
+
+```
+                        ┌─────────────────────────────────────────┐
+                        │        BMC 模擬器 (Fastify)              │
+                        │   data-generator.js (每秒 100 台遙測)     │
+                        └────────────┬──────────────┬─────────────┘
+                                     │              │
+                    WebSocket 推送    │              │  寫入 InfluxDB
+                    (即時 4 種訊息)   │              │  Line Protocol
+                                     ▼              ▼
+                        ┌────────────────┐  ┌──────────────────┐
+                        │ React Dashboard│  │ InfluxDB 2.7     │
+                        │ (Pixi/Three.js)│  │ (Docker, port    │
+                        │ port 5173      │  │  8086)           │
+                        │                │  └────────┬─────────┘
+                        │ 即時操作監控    │           │ Flux 查詢
+                        └────────────────┘           ▼
+                                            ┌──────────────────┐
+                                            │ Grafana 10.4     │
+                                            │ (Docker, port    │
+                                            │  3000)           │
+                                            │                  │
+                                            │ 歷史趨勢分析     │
+                                            └──────────────────┘
+```
+
+#### 啟動方式
+
+```bash
+# 需要 Docker Desktop 已安裝並運行
+docker-compose up --build
+
+# 服務入口
+# Grafana:   http://localhost:3000  (admin / omnicenter)
+# InfluxDB:  http://localhost:8086  (org: omnicenter, bucket: telemetry)
+# Dashboard: http://localhost:5173
+# Simulator: http://localhost:3001
+```
+
+> ⚠️ 純 `npm run dev` 模式不包含 Grafana 與 InfluxDB，僅啟動 Simulator + React Dashboard。
+
 **Dashboard 面板**：
 
 | 面板 | 類型 | Flux 查詢 |

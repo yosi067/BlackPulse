@@ -108,6 +108,52 @@ docker-compose up --build
 # InfluxDB: http://localhost:8086 (org: omnicenter, bucket: telemetry)
 ```
 
+> ⚠️ **前提**：需先安裝 [Docker Desktop](https://www.docker.com/products/docker-desktop/)，啟動後等待 Docker Engine 就緒。
+
+---
+
+## 📊 Grafana 整合說明
+
+### 定位與用途
+
+Grafana 在本專案中作為**歷史時序數據分析平台**，與自建的 React Dashboard 互補：
+
+| 面向 | React + Pixi.js Dashboard | Grafana Dashboard |
+|---|---|---|
+| **核心用途** | 即時操作監控台（NOC 風格），操作員盯盤用 | 歷史趨勢分析，SRE 回溯調查 / 容量規劃用 |
+| **數據來源** | WebSocket 即時推送（每秒 1 次） | InfluxDB Flux 查詢（拉取式，可自訂時間範圍） |
+| **視覺化能力** | 高度客製：Pixi.js 熱力圖、Three.js 3D 機房、GLSL Shader 輝光、粒子動畫、NVLink 拓撲、火焰圖 | 標準圖表：折線圖、gauge、histogram、表格，零程式碼配置 |
+| **互動性** | 鍵盤導航、Raycaster 點擊下鑽、批次操作、告警規則設定、自動修復觸發 | Grafana 原生面板互動（時間範圍縮放、變數篩選、Annotation） |
+| **部署需求** | 可獨立運行；支援靜態模式部署至 GitHub Pages，無需後端 | 必須透過 Docker Compose 啟動（依賴 InfluxDB） |
+| **開發成本** | 從零自建所有 UI 元件與渲染邏輯 | 零程式碼，修改 JSON 即可新增面板 |
+| **適用場景** | 「現在發生什麼事？」 — 即時狀態總覽與操作 | 「過去一小時趨勢如何？」 — 歷史數據回溯與分析 |
+
+### 預建面板（9 面板）
+
+| 面板名稱 | 圖表類型 | 監控指標 |
+|---|---|---|
+| Fleet GPU Temperature | 折線圖 | 全 fleet 最高 GPU 溫度趨勢 |
+| Total Fleet Power | 折線圖 | 全機群總功耗 (kW) |
+| Average PUE | Gauge | 電力使用效率 (1.0 = 最佳) |
+| GPU Utilization | Gauge | 平均 GPU 使用率 (%) |
+| Coolant Flow Rate | 折線圖 | 冷卻液流速 (L/min) |
+| HBM3e Memory Usage | 折線圖 | HBM3e 記憶體使用率 |
+| NVLink Bandwidth | 折線圖 | NVLink 互連頻寬 |
+| PSU Efficiency | Histogram | 電源供應器效率分佈 |
+| Inlet vs Outlet Temp | 雙 Y 軸折線圖 | 進水 / 出水溫度比較 |
+
+### 資料流程
+
+```
+BMC 模擬器 (Fastify) ─── 每秒寫入 ──→ InfluxDB (in-memory buffer)
+                                              │
+                                              ▼
+                                    Grafana (Flux 查詢讀取)
+                                    http://localhost:3000
+```
+
+> 💡 **簡言之**：React Dashboard 是你的「即時戰情室」，Grafana 是「事後分析報表」。兩者各有所長，在真實資料中心監控中通常同時部署。
+
 ---
 
 ## 📂 專案結構
